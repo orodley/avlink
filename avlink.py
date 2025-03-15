@@ -22,10 +22,21 @@ def main(args):
     pp(link_targets)
     print(f"{len(link_targets)} targets found")
 
-    add_links(doc, link_targets)
+    links_added = 0
+
+    # NOTE: For testing, just look at this one page.
+    for page_idx in range(88, 89):
+        page = doc[page_idx]
+
+        for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="(),"):
+            if target_page := link_targets.get(word):
+                add_link(page, word, fitz.Rect(x0, y0, x1, y1), target_page)
+                links_added += 1
+
     doc.save(output_filename)
     doc.close()
 
+    print(f"Added {links_added} links")
     print(f"Saved to {output_filename}")
 
 
@@ -46,16 +57,6 @@ def get_link_targets(doc):
     link_targets["TS-6"] = 113
 
     return link_targets
-
-
-def add_links(doc, link_targets):
-    # NOTE: For testing, just look at this one page.
-    for page_idx in range(88, 89):
-        page = doc[page_idx]
-
-        for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="(),"):
-            if target_page := link_targets.get(word):
-                add_link(page, word, fitz.Rect(x0, y0, x1, y1), target_page)
 
 
 def add_link(page, short_name, rect, target_page):

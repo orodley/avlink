@@ -13,7 +13,17 @@ def main(args):
 
     doc = fitz.open(input_filename)
     toc = doc.get_toc()
-    print(toc)
+    if not toc:
+        exit(f"No table of contents found in {input_filename}")
+
+    for (level, title, page_num, *_) in toc:
+        title = title.strip()
+        print(f"{(level - 1) * ' '}'{title}' {page_num}")
+
+
+def exit(message):
+    print(message, file=sys.stderr)
+    sys.exit(1)
 
 
 if __name__ == "__main__":

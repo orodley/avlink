@@ -53,7 +53,7 @@ def add_links(doc, link_targets):
     for page_idx in range(88, 89):
         page = doc[page_idx]
 
-        for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()"):
+        for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="(),"):
             if target_page := link_targets.get(word):
                 add_link(page, word, fitz.Rect(x0, y0, x1, y1), target_page)
 

@@ -49,43 +49,36 @@ def add_links(doc, link_targets):
     for page_idx in range(88, 89):
         page = doc[page_idx]
 
-        text_instances = page.get_text("words")
-        pp(text_instances)
-        matching = (
-            ti
-            for ti in text_instances
-            if not ti[4].endswith(":")
-            and any(short_name in ti[4] for short_name in link_targets.keys())
-        )
-        pp(list(matching))
-
         # TODO: This isn't ideal because it's quite slow. Searching through the
         # text_instances manually doesn't work though because each instance can include
         # other text (like opening and closing brackets), so the rect we get doesn't
         # precisely match the text we're looking for.
         #
         # Another option could be `get_text` with appropriate delimiters.
-        matches = []
+        links = []
         for short_name, page_no in link_targets.items():
-            matches += [
-                (short_name, page_no, match) for match in page.search_for(short_name)
-            ]
-        pp(matches)
+            # TODO: This also finds the headers for the area keys themselves. We need
+            # to filter those out as it's not useful for a header to link to itself.
+            for rect in page.search_for(short_name):
+                add_link(page, short_name, rect, page_no)
 
-        for short_name, page_no, match in matches:
-            link = {
-                "kind": fitz.LINK_GOTO,
-                "from": match,  # The rectangle area to make clickable
-                "page": page_no,
-            }
-            try:
-                page.insert_link(link)
-            except Exception as e:
-                print(f"Error adding link for '{short_name}': {e}")
-            else:
-                print(f"Added link at {match} for '{short_name}'")
 
-        return
+def add_link(page, short_name, rect, page_no):
+    link = {
+        "kind": fitz.LINK_GOTO,
+        "from": rect,
+        "page": page_no,
+    }
+    page.insert_link(link)
+
+    # Add an underline to indicate the presence of the link.
+
+    # Unlike the PDF coordinate system, MuPDF has y=0 at the top of the page,
+    # increasing towards the bottom.
+    underline_rect = fitz.Rect(rect.x0, rect.y1 - 3.0, rect.x1, rect.y1 - 2.0)
+    page.draw_rect(underline_rect, color=(0, 0, 0.8), width=0.5, fill=(0, 0, 0.8, 1.0))
+
+    print(f"Added link at {rect} for '{short_name}'")
 
 
 def extract_short_name(title):

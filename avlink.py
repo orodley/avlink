@@ -41,6 +41,10 @@ def get_link_targets(doc):
         if short_name:
             link_targets[short_name] = page_num
 
+    # This one is missing from the table of contents.
+    # TODO: We could find missing ones automatically -- we have TS-5 and TS-7.
+    link_targets["TS-6"] = 113
+
     return link_targets
 
 

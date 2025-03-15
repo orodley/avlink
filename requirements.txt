@@ -1,0 +1,2 @@
+# We need at least this version for the "delimiters" argument to "get_text"
+PyMuPDF>=1.23.5

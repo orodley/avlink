@@ -49,25 +49,16 @@ def add_links(doc, link_targets):
     for page_idx in range(88, 89):
         page = doc[page_idx]
 
-        # TODO: This isn't ideal because it's quite slow. Searching through the
-        # text_instances manually doesn't work though because each instance can include
-        # other text (like opening and closing brackets), so the rect we get doesn't
-        # precisely match the text we're looking for.
-        #
-        # Another option could be `get_text` with appropriate delimiters.
-        links = []
-        for short_name, page_no in link_targets.items():
-            # TODO: This also finds the headers for the area keys themselves. We need
-            # to filter those out as it's not useful for a header to link to itself.
-            for rect in page.search_for(short_name):
-                add_link(page, short_name, rect, page_no)
+        for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()"):
+            if target_page := link_targets.get(word):
+                add_link(page, word, fitz.Rect(x0, y0, x1, y1), target_page)
 
 
-def add_link(page, short_name, rect, page_no):
+def add_link(page, short_name, rect, target_page):
     link = {
         "kind": fitz.LINK_GOTO,
         "from": rect,
-        "page": page_no,
+        "page": target_page,
     }
     page.insert_link(link)
 

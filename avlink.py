@@ -2,20 +2,18 @@
 
 import sys
 
-from pypdf import PdfReader
+import fitz
 
 
 def main(args):
-    print(args)
+    if len(args) != 2:
+        print("Usage: avlink.py <input_filename>")
+        sys.exit(1)
     input_filename = args[1]
 
-    reader = PdfReader(input_filename)
-
-    print(f"Number of pages: {len(reader.pages)}")
-
-    page = reader.pages[0]
-    text = page.extract_text()
-    print(f"First page text: {text}")
+    doc = fitz.open(input_filename)
+    toc = doc.get_toc()
+    print(toc)
 
 
 if __name__ == "__main__":

@@ -21,6 +21,13 @@ def main(argv):
     parser.add_argument(
         "-v", "--verbose", help="Print detailed information", action="store_true"
     )
+    parser.add_argument(
+        "-u",
+        "--uncompressed",
+        help="Save the output PDF uncompressed",
+        dest="compressed",
+        action="store_false",
+    )
 
     args = parser.parse_args(argv[1:])
     if not args.output_filename:
@@ -49,7 +56,10 @@ def main(argv):
     vprint(f"Added {links_added} links")
 
     vprint(f"Saving to {args.output_filename}")
-    doc.ez_save(args.output_filename)
+    if args.compressed:
+        doc.ez_save(args.output_filename)
+    else:
+        doc.save(args.output_filename)
     doc.close()
 
 

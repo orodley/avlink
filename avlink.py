@@ -212,7 +212,7 @@ def extract_short_name(title):
            (
              \d{1,2}         |
              SL\d{1,2}[A-Z]? |
-             AV|EX|UP|TS
+             AK|AV|EX|UP|TS
            )-(\d{1,3})[A-Z]?
         )
         (: | ) # Most area names have a colon after the key, but not all.

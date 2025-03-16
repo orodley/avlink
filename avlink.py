@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import pprint
 import re
 import sys
 from pprint import pprint as pp
@@ -96,6 +97,42 @@ def get_link_targets(doc):
     # This one is missing from the table of contents.
     # TODO: We could find missing ones automatically -- we have TS-5 and TS-7.
     link_targets["TS-6"] = 113
+
+    # Scan through the link targets to find missing areas. We infer that if
+    # there is an area X-n, there should also be an area X-(n-1) as long as
+    # n>1, and an area X-(n+1) as long as we have X-(n+2).
+    missing = set()
+    for short_name in sorted(link_targets.keys()):
+        pat = r"(^[A-Z]*\d*[A-Z]*-)(\d+)(.*$)"
+        match = re.match(pat, short_name)
+        area_num = int(match.group(2))
+
+        prev = re.sub(pat, rf"\g<1>{area_num - 1}\g<3>", short_name)
+        next = re.sub(pat, rf"\g<1>{area_num + 1}\g<3>", short_name)
+        next_next = re.sub(pat, rf"\g<1>{area_num + 2}\g<3>", short_name)
+
+        # The existence of X-2A implies the existence of X-1, not X-1A.
+        if prev[-1].isalpha():
+            prev = prev[:-1]
+        if next[-1].isalpha():
+            next = next[:-1]
+        if next_next[-1].isalpha():
+            next_next = next_next[:-1]
+
+        if area_num > 1 and prev not in link_targets:
+            missing |= {prev}
+        if next_next in link_targets and next not in link_targets:
+            if link_targets[short_name] == link_targets[next_next]:
+                # If n and n+2 are on the same page, n+1 must be on the same
+                # page also.
+                link_targets[next] = link_targets[next_next]
+                vprint(f"Inferred page number of {next} from surrounding areas")
+            else:
+                missing |= {next}
+
+    if missing:
+        vprint("Missing areas:")
+        vprint(pprint.pformat(sorted(missing)))
 
     return link_targets
 

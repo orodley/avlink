@@ -45,10 +45,7 @@ def main(argv):
 
     links_added = 0
 
-    # NOTE: For testing, just look at this one page.
-    for page_idx in range(88, 89):
-        page = doc[page_idx]
-
+    for page in doc.pages():
         # Delimiters are carefully chosen to only capture cases where we want to
         # add links.
         # * We omit ":", because the section headers have colons after the name

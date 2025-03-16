@@ -103,7 +103,7 @@ def add_link(page, short_name, rect, target_page):
     underline_rect = fitz.Rect(rect.x0, rect.y1 - 2.5, rect.x1, rect.y1 - 2.0)
     page.draw_rect(underline_rect, color=(0, 0, 0.8), width=0.5, fill=(0, 0, 0.8, 1.0))
 
-    vprint(f"Added link at {rect} for '{short_name}'")
+    vprint(f"Added link at page {page.number} {rect} for '{short_name}'")
 
 
 def extract_short_name(title):

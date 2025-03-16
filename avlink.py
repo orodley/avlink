@@ -33,7 +33,7 @@ def main(args):
                 add_link(page, word, fitz.Rect(x0, y0, x1, y1), target_page)
                 links_added += 1
 
-    doc.save(output_filename)
+    doc.ez_save(args.output_filename)
     doc.close()
 
     print(f"Added {links_added} links")

@@ -60,7 +60,9 @@ def main(argv):
         # * We omit ":", because the section headers have colons after the name
         #   and we don't want to link a section header to itself.
         # * We omit "/" because monster damage is formatted like "1-4/1-4",
-        #   which looks like a link to area 1-4 if we split on "/".
+        #   which looks like a link to area 1-4 if we split on "/". There are
+        #   some instances where we have legimate links separated by "/"s.
+        #   Perhaps we should handle this through context instead...
         for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()[],.;"):
             # TODO: It may be necessary to also include context around the word.
             #   There are cases like "Levels 5-8", "Dmg 2-8", "Damage: 1-6",

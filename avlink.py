@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import re
 import sys
 from pprint import pprint as pp
@@ -7,18 +8,26 @@ from pprint import pprint as pp
 import fitz
 
 
-def main(args):
-    if len(args) != 2:
-        print("Usage: avlink.py <input_filename>")
-        sys.exit(1)
-    input_filename = args[1]
-    output_filename = input_filename.replace(".pdf", "_linked.pdf")
+def main(argv):
+    parser = argparse.ArgumentParser(
+        description="Add links to a PDF of 'Halls of Arden Vul'"
+    )
+    parser.add_argument("input_filename", help="The input PDF filename. Required.")
+    parser.add_argument(
+        "output_filename",
+        help="The output PDF filename. If not provided, defaults to <input_filename>_linked.pdf",
+        nargs="?",
+    )
 
-    doc = fitz.open(input_filename)
+    args = parser.parse_args(argv[1:])
+    if not args.output_filename:
+        args.output_filename = args.input_filename.replace(".pdf", "_linked.pdf")
+
+    doc = fitz.open(args.input_filename)
 
     link_targets = get_link_targets(doc)
     if not link_targets:
-        exit(f"No table of contents found in {input_filename}")
+        exit(f"No table of contents found in {args.input_filename}")
     pp(link_targets)
     print(f"{len(link_targets)} targets found")
 
@@ -37,7 +46,7 @@ def main(args):
     doc.close()
 
     print(f"Added {links_added} links")
-    print(f"Saved to {output_filename}")
+    print(f"Saved to {args.output_filename}")
 
 
 def get_link_targets(doc):

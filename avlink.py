@@ -132,6 +132,7 @@ def extract_short_name(title):
     #   * Spells
     #   * Books
     #   * NPCs
+    #   * Tables (these are local to the section and not in the ToC)
 
     if match:
         return match.group(1)

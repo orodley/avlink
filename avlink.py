@@ -230,6 +230,12 @@ def extract_short_name(title):
     #   * Tables (these are local to the section and not in the ToC)
     #   * Chapters (e.g. link "UP" to the top-level "Pyramid of Thoth" section,
     #     or "Level 1" to the top-level "The Basement" section)
+    #   * Having numbers on the maps link up would be nice, but this is
+    #     challenging because a) the maps are in a separate PDF, and b) the
+    #     maps are all images, so we can't extract text from them. We'd have to
+    #     merge the maps PDF into this one, and either OCR the maps or manually
+    #     add the locations of all the numbers (which sounds like hell so I'm
+    #     ruling that one out).
 
     if match:
         return match.group(1)

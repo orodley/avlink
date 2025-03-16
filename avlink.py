@@ -94,9 +94,45 @@ def get_link_targets(doc):
         if short_name:
             link_targets[short_name] = page_num
 
-    # This one is missing from the table of contents.
-    # TODO: We could find missing ones automatically -- we have TS-5 and TS-7.
-    link_targets["TS-6"] = 113
+    # Add areas that are missing from the table of contents.
+    # Some areas with letters on the end don't contain an entry for the area
+    # as a whole, but do contain references to the area. We point these at
+    # the first of the sub-areas.
+    # TODO: Maybe we could add them to the table of contents also?
+    link_targets |= {
+        # "AV-3 & AV-4", we only match to "AV-3".
+        "AV-4": link_targets["AV-3"],
+        "2-13": 127,
+        "3-36": link_targets["3-36A"],
+        # "3-101 through 3-103", we only match to "3-101".
+        "3-102": link_targets["3-101"],
+        "3-103": link_targets["3-101"],
+        "3-146": 211,
+        "3-147": 211,
+        "3-172": 221,
+        "4-8": link_targets["4-8A"],
+        "4-99": 286,
+        "4-112": link_targets["4-112A"],
+        "4-120": 291,
+        "4-138": link_targets["4-138A"],
+        "4-139": link_targets["4-139A"],
+        "5-75": 349,
+        "6-6": link_targets["6-6A"],
+        "6-20": 394,
+        "6-68": 416,
+        "6-99": 426,
+        "7-40": 469,
+        "7-76": link_targets["7-76A"],
+        "8-69": 540,
+        "9-10": 585,
+        "9-33": 592,
+        "SL1-6": 659,
+        "SL6-46": 746,
+        "SL7-22": 772,
+        "SL8-14": 782,
+        "SL9-28": 793,
+        "SL9-76": 805,
+    }
 
     # Scan through the link targets to find missing areas. We infer that if
     # there is an area X-n, there should also be an area X-(n-1) as long as

@@ -28,6 +28,11 @@ def main(argv):
         dest="compressed",
         action="store_false",
     )
+    parser.add_argument(
+        "--print-link-targets",
+        help="Print the link targets and exit. For debugging.",
+        action="store_true",
+    )
 
     args = parser.parse_args(argv[1:])
     if not args.output_filename:
@@ -43,8 +48,11 @@ def main(argv):
 
     vprint(f"{len(link_targets)} link targets found")
 
-    links_added = 0
+    if args.print_link_targets:
+        print(link_targets)
+        sys.exit(0)
 
+    links_added = 0
     for page in doc.pages():
         # Delimiters are carefully chosen to only capture cases where we want to
         # add links.

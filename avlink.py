@@ -54,8 +54,12 @@ def main(argv):
         #   which looks like a link to area 1-4 if we split on "/".
         for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()[],.;"):
             # TODO: It may be necessary to also include context around the word.
-            # There are cases like "Levels 5-8", "Dmg 2-8", "1-4 HP", "4-5 turns",
-            # and "1-3 hours" which we erroneously link to an area.
+            #   There are cases like "Levels 5-8", "Dmg 2-8", "Damage: 1-6",
+            #   "1-4 HP", "4-5 turns", and "1-3 hours" which we erroneously link
+            #   to an area.
+            # TODO: More difficult to deal with are item quantities (e.g.
+            #   "1-3 glass beads") and roll tables with die roll ranges in one
+            #   column.
             if target_page := link_targets.get(word):
                 add_link(page, word, fitz.Rect(x0, y0, x1, y1), target_page)
                 links_added += 1

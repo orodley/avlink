@@ -78,46 +78,49 @@ def get_link_targets(doc):
         title = title.strip()
         short_name = extract_short_name(title)
         if short_name:
-            link_targets[short_name] = page_num
+            # The table of contents has a 1-based page number, but we want 0-based.
+            link_targets[short_name] = page_num - 1
 
     # Add areas that are missing from the table of contents.
     # Some areas with letters on the end don't contain an entry for the area
     # as a whole, but do contain references to the area. We point these at
     # the first of the sub-areas.
+    # Note that these are 0-based page numbers, so won't line up with what you
+    # see when you open the PDF in a viewer.
     # TODO: Maybe we could add them to the table of contents also?
     link_targets |= {
         # "AV-3 & AV-4", we only match to "AV-3".
         "AV-4": link_targets["AV-3"],
-        "2-13": 127,
+        "2-13": 126,
         "3-36": link_targets["3-36A"],
         # "3-101 through 3-103", we only match to "3-101".
         "3-102": link_targets["3-101"],
         "3-103": link_targets["3-101"],
-        "3-146": 211,
-        "3-147": 211,
-        "3-172": 221,
+        "3-146": 210,
+        "3-147": 210,
+        "3-172": 220,
         "4-8": link_targets["4-8A"],
-        "4-99": 286,
+        "4-99": 285,
         "4-112": link_targets["4-112A"],
-        "4-120": 291,
+        "4-120": 290,
         "4-138": link_targets["4-138A"],
         "4-139": link_targets["4-139A"],
-        "5-75": 349,
+        "5-75": 348,
         "6-6": link_targets["6-6A"],
-        "6-20": 394,
-        "6-68": 416,
-        "6-99": 426,
-        "7-40": 469,
+        "6-20": 393,
+        "6-68": 415,
+        "6-99": 425,
+        "7-40": 468,
         "7-76": link_targets["7-76A"],
-        "8-69": 540,
-        "9-10": 585,
-        "9-33": 592,
-        "SL1-6": 659,
-        "SL6-46": 746,
-        "SL7-22": 772,
-        "SL8-14": 782,
-        "SL9-28": 793,
-        "SL9-76": 805,
+        "8-69": 539,
+        "9-10": 584,
+        "9-33": 591,
+        "SL1-6": 658,
+        "SL6-46": 745,
+        "SL7-22": 771,
+        "SL8-14": 781,
+        "SL9-28": 792,
+        "SL9-76": 804,
     }
 
     # Scan through the link targets to find missing areas. We infer that if
@@ -197,7 +200,9 @@ def add_link(page, short_name, rect, target_page):
     underline_rect = fitz.Rect(rect.x0, rect.y1 - 2.5, rect.x1, rect.y1 - 2.0)
     page.draw_rect(underline_rect, color=(0, 0, 0.8), width=0.5, fill=(0, 0, 0.8, 1.0))
 
-    vprint(f"Added link at page {page.number} {rect} for '{short_name}'")
+    vprint(
+        f"Added link at page {page.number + 1} {rect} -> {target_page + 1} for '{short_name}'"
+    )
 
 
 def extract_short_name(title):
@@ -227,6 +232,9 @@ def extract_short_name(title):
         title,
     )
 
+    if match:
+        return match.group(1)
+
     # TODO:  Extract other stuff:
     #   * Monsters
     #   * Items
@@ -243,9 +251,6 @@ def extract_short_name(title):
     #     merge the maps PDF into this one, and either OCR the maps or manually
     #     add the locations of all the numbers (which sounds like hell so I'm
     #     ruling that one out).
-
-    if match:
-        return match.group(1)
 
 
 VERBOSE = None

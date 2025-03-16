@@ -49,7 +49,16 @@ def main(argv):
     for page_idx in range(88, 89):
         page = doc[page_idx]
 
-        for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="(),"):
+        # Delimiters are carefully chosen to only capture cases where we want to
+        # add links.
+        # * We omit ":", because the section headers have colons after the name
+        #   and we don't want to link a section header to itself.
+        # * We omit "/" because monster damage is formatted like "1-4/1-4",
+        #   which looks like a link to area 1-4 if we split on "/".
+        for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()[],.;"):
+            # TODO: It may be necessary to also include context around the word.
+            # There are cases like "Levels 5-8", "Dmg 2-8", "1-4 HP", "4-5 turns",
+            # and "1-3 hours" which we erroneously link to an area.
             if target_page := link_targets.get(word):
                 add_link(page, word, fitz.Rect(x0, y0, x1, y1), target_page)
                 links_added += 1
@@ -133,6 +142,8 @@ def extract_short_name(title):
     #   * Books
     #   * NPCs
     #   * Tables (these are local to the section and not in the ToC)
+    #   * Chapters (e.g. link "UP" to the top-level "Pyramid of Thoth" section,
+    #     or "Level 1" to the top-level "The Basement" section)
 
     if match:
         return match.group(1)

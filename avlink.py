@@ -171,9 +171,25 @@ def find_references(page, link_targets):
     #   which looks like a link to area 1-4 if we split on "/". There are
     #   some instances where we have legimate links separated by "/"s.
     #   Perhaps we should handle this through context instead...
-    # TODO: Seems like this doesn't find references which span multiple lines.
-    #       See page 66 for an example.
+    words = []
     for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()[],.;"):
+        rect = fitz.Rect(x0, y0, x1, y1)
+        if (
+            words
+            and any(y0 > last_word_rect.y0 for last_word_rect in words[-1][1])
+            and words[-1][0].endswith("-")
+        ):
+            # If the last word ended with a hyphen and is further up the page,
+            # it's likely that the two are actually one word, split over the
+            # line break. We merge them, but keep the hyphen. References all
+            # contain hyphens and are most likely split at that point, so we
+            # want to keep it. If it's not a reference then maybe the original
+            # word didn't contain a hyphen, but we don't really care because
+            # it's not a reference.
+            words[-1] = (words[-1][0] + word, words[-1][1] + [rect])
+        else:
+            words.append((word, [rect]))
+    for word, rects in words:
         # TODO: It may be necessary to also include context around the word.
         #   There are cases like "Levels 5-8", "Dmg 2-8", "Damage: 1-6",
         #   "1-4 HP", "4-5 turns", and "1-3 hours" which we erroneously link
@@ -182,7 +198,8 @@ def find_references(page, link_targets):
         #   "1-3 glass beads") and roll tables with die roll ranges in one
         #   column.
         if target_page := link_targets.get(word):
-            yield (word, fitz.Rect(x0, y0, x1, y1), target_page)
+            for rect in rects:
+                yield (word, rect, target_page)
 
 
 def add_link(page, short_name, rect, target_page):

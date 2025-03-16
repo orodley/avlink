@@ -168,6 +168,8 @@ def find_references(page, link_targets):
     #   which looks like a link to area 1-4 if we split on "/". There are
     #   some instances where we have legimate links separated by "/"s.
     #   Perhaps we should handle this through context instead...
+    # TODO: Seems like this doesn't find references which span multiple lines.
+    #       See page 66 for an example.
     for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()[],.;"):
         # TODO: It may be necessary to also include context around the word.
         #   There are cases like "Levels 5-8", "Dmg 2-8", "Damage: 1-6",

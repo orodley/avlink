@@ -18,18 +18,23 @@ def main(argv):
         help="The output PDF filename. If not provided, defaults to <input_filename>_linked.pdf",
         nargs="?",
     )
+    parser.add_argument(
+        "-v", "--verbose", help="Print detailed information", action="store_true"
+    )
 
     args = parser.parse_args(argv[1:])
     if not args.output_filename:
         args.output_filename = args.input_filename.replace(".pdf", "_linked.pdf")
+    global VERBOSE
+    VERBOSE = args.verbose
 
     doc = fitz.open(args.input_filename)
 
     link_targets = get_link_targets(doc)
     if not link_targets:
         exit(f"No table of contents found in {args.input_filename}")
-    pp(link_targets)
-    print(f"{len(link_targets)} targets found")
+
+    vprint(f"{len(link_targets)} link targets found")
 
     links_added = 0
 
@@ -41,12 +46,11 @@ def main(argv):
             if target_page := link_targets.get(word):
                 add_link(page, word, fitz.Rect(x0, y0, x1, y1), target_page)
                 links_added += 1
+    vprint(f"Added {links_added} links")
 
+    vprint(f"Saving to {args.output_filename}")
     doc.ez_save(args.output_filename)
     doc.close()
-
-    print(f"Added {links_added} links")
-    print(f"Saved to {args.output_filename}")
 
 
 def get_link_targets(doc):
@@ -83,7 +87,7 @@ def add_link(page, short_name, rect, target_page):
     underline_rect = fitz.Rect(rect.x0, rect.y1 - 2.5, rect.x1, rect.y1 - 2.0)
     page.draw_rect(underline_rect, color=(0, 0, 0.8), width=0.5, fill=(0, 0, 0.8, 1.0))
 
-    print(f"Added link at {rect} for '{short_name}'")
+    vprint(f"Added link at {rect} for '{short_name}'")
 
 
 def extract_short_name(title):
@@ -121,6 +125,14 @@ def extract_short_name(title):
 
     if match:
         return match.group(1)
+
+
+VERBOSE = None
+
+
+def vprint(*args, **kwargs):
+    if VERBOSE:
+        print(*args, **kwargs)
 
 
 def exit(message):

@@ -55,25 +55,9 @@ def main(argv):
 
     links_added = 0
     for page in doc.pages():
-        # Delimiters are carefully chosen to only capture cases where we want to
-        # add links.
-        # * We omit ":", because the section headers have colons after the name
-        #   and we don't want to link a section header to itself.
-        # * We omit "/" because monster damage is formatted like "1-4/1-4",
-        #   which looks like a link to area 1-4 if we split on "/". There are
-        #   some instances where we have legimate links separated by "/"s.
-        #   Perhaps we should handle this through context instead...
-        for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()[],.;"):
-            # TODO: It may be necessary to also include context around the word.
-            #   There are cases like "Levels 5-8", "Dmg 2-8", "Damage: 1-6",
-            #   "1-4 HP", "4-5 turns", and "1-3 hours" which we erroneously link
-            #   to an area.
-            # TODO: More difficult to deal with are item quantities (e.g.
-            #   "1-3 glass beads") and roll tables with die roll ranges in one
-            #   column.
-            if target_page := link_targets.get(word):
-                add_link(page, word, fitz.Rect(x0, y0, x1, y1), target_page)
-                links_added += 1
+        for word, rect, target_page in find_references(page, link_targets):
+            add_link(page, word, rect, target_page)
+            links_added += 1
     vprint(f"Added {links_added} links")
 
     vprint(f"Saving to {args.output_filename}")
@@ -173,6 +157,27 @@ def get_link_targets(doc):
         vprint(pprint.pformat(sorted(missing)))
 
     return link_targets
+
+
+def find_references(page, link_targets):
+    # Delimiters are carefully chosen to only capture cases where we want to
+    # add links.
+    # * We omit ":", because the section headers have colons after the name
+    #   and we don't want to link a section header to itself.
+    # * We omit "/" because monster damage is formatted like "1-4/1-4",
+    #   which looks like a link to area 1-4 if we split on "/". There are
+    #   some instances where we have legimate links separated by "/"s.
+    #   Perhaps we should handle this through context instead...
+    for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()[],.;"):
+        # TODO: It may be necessary to also include context around the word.
+        #   There are cases like "Levels 5-8", "Dmg 2-8", "Damage: 1-6",
+        #   "1-4 HP", "4-5 turns", and "1-3 hours" which we erroneously link
+        #   to an area.
+        # TODO: More difficult to deal with are item quantities (e.g.
+        #   "1-3 glass beads") and roll tables with die roll ranges in one
+        #   column.
+        if target_page := link_targets.get(word):
+            yield (word, fitz.Rect(x0, y0, x1, y1), target_page)
 
 
 def add_link(page, short_name, rect, target_page):

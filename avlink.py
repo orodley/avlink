@@ -113,6 +113,11 @@ def get_link_targets(doc):
         # "AV-3 & AV-4", we only match to "AV-3".
         "AV-4": link_targets["AV-3"],
         "2-13": 126,
+        "2-36A": link_targets["2-36"],
+        "2-36B": link_targets["2-36"],
+        "2-36C": link_targets["2-36"],
+        "2-36D": link_targets["2-36"],
+        "2-36E": link_targets["2-36"],
         "3-36": link_targets["3-36A"],
         # "3-101 through 3-103", we only match to "3-101".
         "3-102": link_targets["3-101"],

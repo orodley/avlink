@@ -4,6 +4,7 @@ import argparse
 import pprint
 import re
 import sys
+from pathlib import Path
 from pprint import pprint as pp
 
 import fitz
@@ -39,6 +40,12 @@ def main(argv):
         "--page",
         help="If passed, only add links to this (1-based) page number. For debugging.",
     )
+    parser.add_argument(
+        "--overwrite",
+        help="If true, the output file will be overwritten if it exists.",
+        action="store_true",
+        default=False,
+    )
 
     args = parser.parse_args(argv[1:])
     if not args.output_filename:
@@ -71,6 +78,10 @@ def main(argv):
     vprint(f"Added {links_added} links")
 
     vprint(f"Saving to {args.output_filename}")
+    if not args.overwrite and Path(args.output_filename).exists():
+        exit(
+            f"Output file {args.output_filename} already exists. Use --overwrite to replace it."
+        )
     if args.compressed:
         doc.ez_save(args.output_filename)
     else:

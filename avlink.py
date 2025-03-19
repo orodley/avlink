@@ -34,6 +34,11 @@ def main(argv):
         help="Print the link targets and exit. For debugging.",
         action="store_true",
     )
+    parser.add_argument(
+        "-p",
+        "--page",
+        help="If passed, only add links to this (1-based) page number. For debugging.",
+    )
 
     args = parser.parse_args(argv[1:])
     if not args.output_filename:
@@ -54,7 +59,12 @@ def main(argv):
         sys.exit(0)
 
     links_added = 0
-    for page in doc.pages():
+    if args.page:
+        page = int(args.page) - 1
+        pages = doc.pages(page, page + 1)
+    else:
+        pages = doc.pages()
+    for page in pages:
         for word, rect, target_page in find_references(page, link_targets):
             add_link(page, word, rect, target_page)
             links_added += 1

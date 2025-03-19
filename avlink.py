@@ -215,17 +215,82 @@ def find_references(page, link_targets):
             words[-1] = (words[-1][0] + word, words[-1][1] + [rect])
         else:
             words.append((word, [rect]))
-    for word, rects in words:
-        # TODO: It may be necessary to also include context around the word.
-        #   There are cases like "Levels 5-8", "Dmg 2-8", "Damage: 1-6",
-        #   "1-4 HP", "4-5 turns", and "1-3 hours" which we erroneously link
-        #   to an area.
-        # TODO: More difficult to deal with are item quantities (e.g.
-        #   "1-3 glass beads") and roll tables with die roll ranges in one
-        #   column.
+
+    for i in range(len(words)):
+        word, rects = words[i]
+        before, after = (
+            words[i - 1][0] if i > 0 else None,
+            words[i + 1][0] if i < len(words) - 1 else None,
+        )
+
+        # TODO: Handle roll tables with die roll ranges in one column.
         if target_page := link_targets.get(word):
+            if non_ref_pattern(before, after):
+                continue
             for rect in rects:
                 yield (word, rect, target_page)
+
+
+def non_ref_pattern(before, after):
+    prefixes = {"on", "levels", "dmg", "damage"}
+    suffixes = {
+        "levels",
+        "dmg",
+        "damage",
+        "dagger",
+        "flail",
+        "mace",
+        "crossbow",
+        "club",
+        "hammer",
+        "war",
+        "hp",
+        "health",
+        "cp",
+        "sp",
+        "gp",
+        "pp",
+        "silver",
+        "gold",
+        "platinum",
+        "gems",
+        "scrolls",
+        "keys",
+        "magic",
+        "curios",
+        "specimens",
+        "spells",
+        "objects",
+        "rounds",
+        "turns",
+        "hours",
+        "days",
+        "weeks",
+        "months",
+        "years",
+        "light",
+        "large",
+        "short",
+        "long",
+        "normal",
+        "male",
+        "female",
+        "skilled",
+        "unskilled",
+        "classed",
+        "nonclassed",
+        "guildsmen",
+        "poor",
+    }
+    if before and canon(before) in prefixes:
+        return True
+    if after and canon(after) in suffixes:
+        return True
+    return False
+
+
+def canon(word):
+    return "".join(c for c in word.lower() if c.isalpha())
 
 
 def add_link(page, short_name, rect, target_page):

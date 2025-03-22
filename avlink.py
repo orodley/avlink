@@ -232,7 +232,7 @@ def find_references(page, link_targets):
 
 
 def non_ref_pattern(before, after):
-    prefixes = {"on", "levels", "dmg", "damage"}
+    prefixes = {"on", "level", "levels", "dmg", "damage"}
     suffixes = {
         "levels",
         "dmg",
@@ -273,6 +273,7 @@ def non_ref_pattern(before, after):
         "short",
         "long",
         "normal",
+        "lesser",
         "male",
         "female",
         "skilled",
@@ -281,6 +282,7 @@ def non_ref_pattern(before, after):
         "nonclassed",
         "guildsmen",
         "poor",
+        "groups",
     }
     if before and canon(before) in prefixes:
         return True

@@ -76,6 +76,7 @@ def main(argv):
             add_link(page, word, rect, target_page)
             links_added += 1
     vprint(f"Added {links_added} links")
+    vprint(f"Excluded {DIE_RANGES_EXCLUDED} die ranges")
 
     vprint(f"Saving to {args.output_filename}")
     if not args.overwrite and Path(args.output_filename).exists():
@@ -188,6 +189,9 @@ def get_link_targets(doc):
     return link_targets
 
 
+DIE_RANGES_EXCLUDED = 0
+
+
 def find_references(page, link_targets):
     # Delimiters are carefully chosen to only capture cases where we want to
     # add links.
@@ -216,19 +220,107 @@ def find_references(page, link_targets):
         else:
             words.append((word, [rect]))
 
+    die_ranges = []
+    links = []
     for i in range(len(words)):
         word, rects = words[i]
-        before, after = (
-            words[i - 1][0] if i > 0 else None,
-            words[i + 1][0] if i < len(words) - 1 else None,
-        )
 
-        # TODO: Handle roll tables with die roll ranges in one column.
+        if len(rects) == 1 and (r := die_range(word)):
+            die_ranges.append((*r, centre(rects[0])))
+
         if target_page := link_targets.get(word):
+            before, after = (
+                words[i - 1][0] if i > 0 else None,
+                words[i + 1][0] if i < len(words) - 1 else None,
+            )
             if non_ref_pattern(before, after):
                 continue
             for rect in rects:
-                yield (word, rect, target_page)
+                links.append((word, rect, target_page))
+
+    if not links:
+        return []
+
+    excluded_points = find_table_entries(die_ranges)
+
+    output = []
+    for word, rect, target_page in links:
+        if any(rect.contains(excluded_point) for excluded_point in excluded_points):
+            global DIE_RANGES_EXCLUDED
+            DIE_RANGES_EXCLUDED += 1
+        else:
+            output.append((word, rect, target_page))
+    return output
+
+
+def die_range(word):
+    # Special case to handle table headings. This allows this method to work
+    # in cases we we only have the header and the next row before reaching
+    # the end of the page.
+    if re.match(r"^[dD]\d{1,3}$", word):
+        # This will match before the start of any real roll table entry
+        return (0, 0)
+
+    if all(c.isdigit() for c in word):
+        if 1 <= (x := int(word)) <= 100:
+            return (x, x)
+        return None
+
+    if (
+        len((s := word.split("-"))) == 2
+        and all(len(x) > 0 for x in s)
+        and all(c.isdigit() for x in s for c in x)
+    ):
+        x, y = map(int, s)
+        if 1 <= x < y <= 100:
+            return (x, y)
+    return None
+
+
+# This fails in some cases like on p405 where we just so happen to have
+# "AC 5" from a previous paragraph directly above a "6-47".
+#
+# There are also a few known cases where this fails but a table approach
+# works. This is because sometimes the entries are left-aligned rather
+# than centre-aligned, so we don't detect them as being in a chain.
+# These are on pages 124, 293, and 854. Since there's only three, whatever.
+def find_table_entries(die_ranges):
+    die_ranges.sort(key=lambda x: (x[0], x[1], x[2].y, x[2].x))
+    starting_points = {}
+    prev = None
+    for i, (start, _, _) in enumerate(die_ranges):
+        if prev != start:
+            starting_points[start] = i
+        prev = start
+
+    excluded_points = []
+    used = set()
+    for i in range(len(die_ranges)):
+        if i in used:
+            continue
+
+        chain = [i]
+        while True:
+            _, end, point1 = die_ranges[chain[-1]]
+            j = starting_points.get(end + 1)
+            if j is None:
+                break
+            while j < len(die_ranges) and die_ranges[j][0] == end + 1:
+                _, _, point2 = die_ranges[j]
+                if abs(point2.x - point1.x) < 0.05 and point2.y > point1.y:
+                    chain.append(j)
+                    break
+                j += 1
+            else:
+                break
+
+        if len(chain) > 1:
+            excluded_points.extend(
+                die_ranges[j][2] for j in chain if die_ranges[j][0] != die_ranges[j][1]
+            )
+            for j in chain:
+                used.add(j)
+    return excluded_points
 
 
 def non_ref_pattern(before, after):
@@ -361,6 +453,10 @@ def extract_short_name(title):
     #     merge the maps PDF into this one, and either OCR the maps or manually
     #     add the locations of all the numbers (which sounds like hell so I'm
     #     ruling that one out).
+
+
+def centre(rect):
+    return fitz.Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
 
 
 VERBOSE = None

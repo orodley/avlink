@@ -253,11 +253,14 @@ def find_references(page, link_targets):
     return output
 
 
+TABLE_HEADING_PATTERN = re.compile(r"^[dD]\d{1,3}$")
+
+
 def die_range(word):
     # Special case to handle table headings. This allows this method to work
     # in cases we we only have the header and the next row before reaching
     # the end of the page.
-    if re.match(r"^[dD]\d{1,3}$", word):
+    if re.match(TABLE_HEADING_PATTERN, word):
         # This will match before the start of any real roll table entry
         return (0, 0)
 

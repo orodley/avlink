@@ -203,10 +203,9 @@ def find_references(page, link_targets):
     #   Perhaps we should handle this through context instead...
     words = []
     for (x0, y0, x1, y1, word, *_) in page.get_text("words", delimiters="()[],.;"):
-        rect = fitz.Rect(x0, y0, x1, y1)
         if (
             words
-            and any(y0 > last_word_rect.y0 for last_word_rect in words[-1][1])
+            and any(y0 > last_word_y0 for (_, last_word_y0, _, _) in words[-1][1])
             and words[-1][0].endswith("-")
         ):
             # If the last word ended with a hyphen and is further up the page,
@@ -216,9 +215,9 @@ def find_references(page, link_targets):
             # want to keep it. If it's not a reference then maybe the original
             # word didn't contain a hyphen, but we don't really care because
             # it's not a reference.
-            words[-1] = (words[-1][0] + word, words[-1][1] + [rect])
+            words[-1] = (words[-1][0] + word, words[-1][1] + [(x0, y0, x1, y1)])
         else:
-            words.append((word, [rect]))
+            words.append((word, [(x0, y0, x1, y1)]))
 
     die_ranges = []
     links = []
@@ -226,7 +225,7 @@ def find_references(page, link_targets):
         word, rects = words[i]
 
         if len(rects) == 1 and (r := die_range(word)):
-            die_ranges.append((*r, centre(rects[0])))
+            die_ranges.append((*r, centre(*rects[0])))
 
         if target_page := link_targets.get(word):
             before, after = (
@@ -236,7 +235,7 @@ def find_references(page, link_targets):
             if non_ref_pattern(before, after):
                 continue
             for rect in rects:
-                links.append((word, rect, target_page))
+                links.append((word, fitz.Rect(*rect), target_page))
 
     if not links:
         return []
@@ -458,8 +457,8 @@ def extract_short_name(title):
     #     ruling that one out).
 
 
-def centre(rect):
-    return fitz.Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
+def centre(x0, y0, x1, y1):
+    return fitz.Point((x0 + x1) / 2, (y0 + y1) / 2)
 
 
 VERBOSE = None

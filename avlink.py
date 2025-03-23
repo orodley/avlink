@@ -16,11 +16,6 @@ def main(argv):
     )
     parser.add_argument("input_filename", help="The input PDF filename. Required.")
     parser.add_argument(
-        "output_filename",
-        help="The output PDF filename. If not provided, defaults to <input_filename>_linked.pdf",
-        nargs="?",
-    )
-    parser.add_argument(
         "-v", "--verbose", help="Print detailed information", action="store_true"
     )
     parser.add_argument(
@@ -56,8 +51,7 @@ def main(argv):
     )
 
     args = parser.parse_args(argv[1:])
-    if not args.output_filename:
-        args.output_filename = args.input_filename.replace(".pdf", "_linked.pdf")
+    output_filename = args.input_filename.replace(".pdf", "_linked.pdf")
     global VERBOSE
     VERBOSE = args.verbose
 
@@ -88,15 +82,15 @@ def main(argv):
     vprint(f"Added {links_added} links")
     vprint(f"Excluded {DIE_RANGES_EXCLUDED} die ranges")
 
-    vprint(f"Saving to {args.output_filename}")
-    if not args.overwrite and Path(args.output_filename).exists():
+    vprint(f"Saving to {output_filename}")
+    if not args.overwrite and Path(output_filename).exists():
         exit(
-            f"Output file {args.output_filename} already exists. Use --overwrite to replace it."
+            f"Output file {output_filename} already exists. Use --overwrite to replace it."
         )
     if args.compressed:
-        doc.ez_save(args.output_filename)
+        doc.ez_save(output_filename)
     else:
-        doc.save(args.output_filename)
+        doc.save(output_filename)
     doc.close()
 
 

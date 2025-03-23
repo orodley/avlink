@@ -46,6 +46,14 @@ def main(argv):
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        "--no-entities",
+        help="By default, links are generated for areas and also for various"
+        + "entities such as monsters, items, etc. If this flag is passed, "
+        + "links are only added for areas.",
+        dest="link_entities",
+        action="store_false",
+    )
 
     args = parser.parse_args(argv[1:])
     if not args.output_filename:
@@ -55,7 +63,7 @@ def main(argv):
 
     doc = fitz.open(args.input_filename)
 
-    link_targets = get_link_targets(doc)
+    link_targets = get_link_targets(doc, args.link_entities)
     if not link_targets:
         exit(f"No table of contents found in {args.input_filename}")
 
@@ -72,7 +80,9 @@ def main(argv):
     else:
         pages = doc.pages()
     for page in pages:
-        for word, rect, target_page in find_references(page, link_targets):
+        for word, rect, target_page in find_references(
+            page, link_targets, args.link_entities
+        ):
             add_link(page, word, rect, target_page)
             links_added += 1
     vprint(f"Added {links_added} links")
@@ -90,18 +100,64 @@ def main(argv):
     doc.close()
 
 
-def get_link_targets(doc):
+def get_link_targets(doc, link_entities):
     toc = doc.get_toc()
     if not toc:
         return None
 
+    curr_section = None
     link_targets = {}
-    for (_, title, page_num, *_) in toc:
-        title = title.strip()
-        short_name = extract_short_name(title)
-        if short_name:
-            # The table of contents has a 1-based page number, but we want 0-based.
-            link_targets[short_name] = page_num - 1
+    for (level, title, page_num, *_) in toc:
+        # The table of contents has a 1-based page number, but we want 0-based.
+        page_num -= 1
+        title = title.strip().replace("\r", "")
+
+        if level == 1:
+            curr_section = title
+
+        if (
+            link_entities
+            and level == 2
+            and curr_section
+            in {
+                "New Monsters",
+                "New Magic Items",
+                "New Technological Items",
+                "Arden Vul Items",
+                "New Flora",
+                "New Spells",
+                "Arden Vul Books",
+            }
+        ):
+            # The ToC entries sometimes have the ':' still on the end.
+            title.removesuffix(":")
+            title = title.lower()
+
+            forms = [title]
+            if title.endswith(", The"):
+                forms.append(f"The {title[:-5]}")
+            s = title.split(" ")
+            # Transform "skeleton, black" into "black skeleton"
+            if len(s) >= 2 and s[-2].endswith(","):
+                forms.append(" ".join([s[-1]] + s[:-2] + [s[-2][:-1]]))
+
+            # This is just a rough approximation. Doing this in full generality
+            # is very tricky. There are lots of cases we don't handle, like
+            # irregular plural forms other than "y"->"ies", or cases where the
+            # plural doesn't apply on the end ("X of Y" -> "Xs of Y").
+            plural_and_singles = []
+            for form in forms:
+                plural_and_singles.append(form + "s")
+                if form.endswith("y"):
+                    plural_and_singles.append(form[:-1] + "ies")
+                if form.endswith("s"):
+                    plural_and_singles.append(form[:-1])
+            forms.extend(plural_and_singles)
+
+            for form in forms:
+                link_targets[form] = page_num
+        elif short_name := extract_short_name(title):
+            link_targets[short_name] = page_num
 
     # Add areas that are missing from the table of contents.
     # Some areas with letters on the end don't contain an entry for the area
@@ -157,6 +213,8 @@ def get_link_targets(doc):
     for short_name in sorted(link_targets.keys()):
         pat = r"(^[A-Z]*\d*[A-Z]*-)(\d+)(.*$)"
         match = re.match(pat, short_name)
+        if not match:
+            continue
         area_num = int(match.group(2))
 
         prev = re.sub(pat, rf"\g<1>{area_num - 1}\g<3>", short_name)
@@ -192,7 +250,7 @@ def get_link_targets(doc):
 DIE_RANGES_EXCLUDED = 0
 
 
-def find_references(page, link_targets):
+def find_references(page, link_targets, link_entities):
     # Delimiters are carefully chosen to only capture cases where we want to
     # add links.
     # * We omit ":", because the section headers have colons after the name
@@ -236,6 +294,22 @@ def find_references(page, link_targets):
                 continue
             for rect in rects:
                 links.append((word, fitz.Rect(*rect), target_page))
+
+    if link_entities:
+        longest = max(len(name.split()) for name in link_targets.keys())
+        for i in range(len(words)):
+            for j in range(min(len(words), i + longest + 1), i + 1, -1):
+                phrase = " ".join(text for (text, _) in words[i:j]).lower()
+                if target_page := link_targets.get(phrase):
+                    print(phrase)
+                    all_rects = []
+                    for _, rects in words[i:j]:
+                        all_rects.extend(fitz.Rect(*r) for r in rects)
+                    for rect in join_rects(all_rects):
+                        links.append((phrase, rect, target_page))
+                    # We started from the longest possible match, so as soon as we
+                    # get one we stop so that we don't have overlapping links.
+                    break
 
     if not links:
         return []
@@ -389,6 +463,18 @@ def canon(word):
     return "".join(c for c in word.lower() if c.isalpha())
 
 
+def join_rects(rects):
+    print(rects)
+    output = [rects[0]]
+    for rect in rects[1:]:
+        if rect.y1 == output[-1].y1:
+            output[-1].x1 = rect.x1
+        else:
+            output.append(rect)
+    print(output)
+    return output
+
+
 def add_link(page, short_name, rect, target_page):
     link = {
         "kind": fitz.LINK_GOTO,
@@ -440,11 +526,6 @@ def extract_short_name(title):
         return match.group(1)
 
     # TODO:  Extract other stuff:
-    #   * Monsters
-    #   * Items
-    #   * Flora
-    #   * Spells
-    #   * Books
     #   * NPCs
     #   * Tables (these are local to the section and not in the ToC)
     #   * Chapters (e.g. link "UP" to the top-level "Pyramid of Thoth" section,

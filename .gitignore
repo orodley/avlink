@@ -2,3 +2,7 @@
 .venv/
 /prof*
 *.svg
+*.png
+*.jpeg
+*.json
+*.vott

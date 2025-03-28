@@ -86,12 +86,16 @@ def main(argv):
         else:
             pages = doc.pages()
         for page in pages:
+            if not args.verbose:
+                print(f"\rAdding links to page {page.number + 1}", end="")
             for word, rect, target_page in find_references(
                 page, link_targets, args.link_entities
             ):
                 add_link(page, word, rect, target_page)
                 links_added += 1
-        vprint(f"Added {links_added} links")
+        if not args.verbose:
+            print("")
+        print(f"Added {links_added} links")
         vprint(f"Excluded {DIE_RANGES_EXCLUDED} die ranges")
 
     if args.maps_filename:
@@ -99,7 +103,7 @@ def main(argv):
         maps_doc = fitz.open(args.maps_filename)
         add_maps_links(doc, maps_doc, link_targets)
 
-    vprint(f"Saving to {output_filename}")
+    print(f"Saving to '{output_filename}'. This may take a few minutes.")
     if not args.overwrite and Path(output_filename).exists():
         exit(
             f"Output file {output_filename} already exists. Use --overwrite to replace it."

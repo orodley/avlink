@@ -475,14 +475,12 @@ def canon(word):
 
 
 def join_rects(rects):
-    print(rects)
     output = [rects[0]]
     for rect in rects[1:]:
         if rect.y1 == output[-1].y1:
             output[-1].x1 = rect.x1
         else:
             output.append(rect)
-    print(output)
     return output
 
 

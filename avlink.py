@@ -4,6 +4,7 @@ import argparse
 import pprint
 import re
 import sys
+from collections import defaultdict
 from pathlib import Path
 from pprint import pprint as pp
 
@@ -15,6 +16,10 @@ def main(argv):
         description="Add links to a PDF of 'Halls of Arden Vul'"
     )
     parser.add_argument("input_filename", help="The input PDF filename. Required.")
+    parser.add_argument(
+        "--maps_filename",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument(
         "-v", "--verbose", help="Print detailed information", action="store_true"
     )
@@ -49,6 +54,12 @@ def main(argv):
         dest="link_entities",
         action="store_false",
     )
+    parser.add_argument(
+        "--maps-only",
+        help=argparse.SUPPRESS,
+        action="store_true",
+        default=False,
+    )
 
     args = parser.parse_args(argv[1:])
     output_filename = args.input_filename.replace(".pdf", "_linked.pdf")
@@ -68,19 +79,25 @@ def main(argv):
         sys.exit(0)
 
     links_added = 0
-    if args.page:
-        page = int(args.page) - 1
-        pages = doc.pages(page, page + 1)
-    else:
-        pages = doc.pages()
-    for page in pages:
-        for word, rect, target_page in find_references(
-            page, link_targets, args.link_entities
-        ):
-            add_link(page, word, rect, target_page)
-            links_added += 1
-    vprint(f"Added {links_added} links")
-    vprint(f"Excluded {DIE_RANGES_EXCLUDED} die ranges")
+    if not args.maps_only:
+        if args.page:
+            page = int(args.page) - 1
+            pages = doc.pages(page, page + 1)
+        else:
+            pages = doc.pages()
+        for page in pages:
+            for word, rect, target_page in find_references(
+                page, link_targets, args.link_entities
+            ):
+                add_link(page, word, rect, target_page)
+                links_added += 1
+        vprint(f"Added {links_added} links")
+        vprint(f"Excluded {DIE_RANGES_EXCLUDED} die ranges")
+
+    if args.maps_filename:
+        vprint(f"Loading maps from {args.maps_filename}")
+        maps_doc = fitz.open(args.maps_filename)
+        add_maps_links(doc, maps_doc, link_targets)
 
     vprint(f"Saving to {output_filename}")
     if not args.overwrite and Path(output_filename).exists():
@@ -467,6 +484,71 @@ def join_rects(rects):
             output.append(rect)
     print(output)
     return output
+
+
+def add_maps_links(doc, maps_doc, link_targets):
+    toc = maps_doc.get_toc()
+    if not toc:
+        return
+
+    ocr_data = defaultdict(list)
+    for line in open("ocr.csv", "r").readlines():
+        s = line.strip().split(",")
+        page_no, text, x0, y0, x1, y1 = s
+        ocr_data[int(page_no)].append((text, fitz.Rect(x0, y0, x1, y1)))
+
+    to_link = {}
+    for (_, title, page_num, *_) in toc:
+        title = title.strip().replace("\r", "")
+        if m := re.match(r"Level (\d+)", title):
+            area_prefix = m.group(1)
+        elif m := re.match(r"Sub-Level (\d+[A-Z]?)", title):
+            area_prefix = f"SL{m.group(1)}"
+        elif ap := {
+            "The Cliff Face": "EX",
+            "AV - City Ruins": "AV",
+            "Under the pyramid of Thoth": "UP",
+            "The Tower of Scrutiny": "TS",
+        }.get(title):
+            area_prefix = ap
+        else:
+            continue
+
+        # ToC uses a 1-based index, we want 0-based.
+        to_link[page_num - 1] = area_prefix
+
+    src_page_nos = []
+    for page in maps_doc.pages():
+        area_prefix = to_link.get(page.number)
+        if not area_prefix:
+            continue
+
+        # TODO: Should add to the ToC as well.
+        doc.insert_pdf(maps_doc, from_page=page.number, to_page=page.number)
+        src_page_nos.append(page.number)
+
+    for i, page in enumerate(doc.pages(-len(src_page_nos))):
+        src_page_no = src_page_nos[i]
+        area_prefix = to_link.get(src_page_no)
+
+        info = page.get_image_info()[0]
+        pp((info["width"], info["height"]))
+        pp(page.rect)
+        scale_x = page.rect.width / info["width"]
+        scale_y = page.rect.height / info["height"]
+        pp((scale_x, scale_y))
+        for word, rect in ocr_data[src_page_no]:
+            if "-" in word:
+                full_name = word
+            else:
+                full_name = f"{area_prefix}-{word}"
+
+            rect.x0 *= scale_x
+            rect.x1 *= scale_x
+            rect.y0 *= scale_y
+            rect.y1 *= scale_y
+            if target := link_targets.get(full_name):
+                add_link(page, full_name, rect, target)
 
 
 def add_link(page, short_name, rect, target_page):

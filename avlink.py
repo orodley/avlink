@@ -32,13 +32,13 @@ def main(argv):
     )
     parser.add_argument(
         "--print-link-targets",
-        help="Print the link targets and exit. For debugging.",
+        help=argparse.SUPPRESS,
         action="store_true",
     )
     parser.add_argument(
         "-p",
         "--page",
-        help="If passed, only add links to this (1-based) page number. For debugging.",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--overwrite",

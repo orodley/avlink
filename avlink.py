@@ -296,7 +296,6 @@ def find_references(page, link_targets, link_entities):
             for j in range(min(len(words), i + longest + 1), i + 1, -1):
                 phrase = " ".join(text for (text, _) in words[i:j]).lower()
                 if target_page := link_targets.get(phrase):
-                    print(phrase)
                     all_rects = []
                     for _, rects in words[i:j]:
                         all_rects.extend(fitz.Rect(*r) for r in rects)

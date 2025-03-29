@@ -112,29 +112,26 @@ def get_link_targets(doc, link_entities):
         return None
 
     curr_section = None
+    curr_section_level = -1
     link_targets = {}
     for (level, title, page_num, *_) in toc:
         # The table of contents has a 1-based page number, but we want 0-based.
         page_num -= 1
         title = title.strip().replace("\r", "")
 
-        if level == 1:
+        if title in {
+            "New Monsters",
+            "New Magic Items",
+            "New Technological Items",
+            "Arden Vul Items",
+            "New Flora",
+            "New Spells",
+            "Arden Vul Books",
+        }:
             curr_section = title
+            curr_section_level = level
 
-        if (
-            link_entities
-            and level == 2
-            and curr_section
-            in {
-                "New Monsters",
-                "New Magic Items",
-                "New Technological Items",
-                "Arden Vul Items",
-                "New Flora",
-                "New Spells",
-                "Arden Vul Books",
-            }
-        ):
+        if link_entities and curr_section and level == curr_section_level + 1:
             # The ToC entries sometimes have the ':' still on the end.
             title.removesuffix(":")
             title = title.lower()

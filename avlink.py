@@ -25,13 +25,6 @@ def main(argv):
         "-v", "--verbose", help="Print detailed information", action="store_true"
     )
     parser.add_argument(
-        "-u",
-        "--uncompressed",
-        help="Save the output PDF uncompressed",
-        dest="compressed",
-        action="store_false",
-    )
-    parser.add_argument(
         "--print-link-targets",
         help=argparse.SUPPRESS,
         action="store_true",
@@ -109,10 +102,7 @@ def main(argv):
         exit(
             f"Output file {output_filename} already exists. Use --overwrite to replace it."
         )
-    if args.compressed:
-        doc.save(output_filename, deflate=True, garbage=2, use_objstms=True)
-    else:
-        doc.save(output_filename)
+    doc.save(output_filename, deflate=True, garbage=2, use_objstms=True)
     doc.close()
 
 

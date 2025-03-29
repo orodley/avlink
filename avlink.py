@@ -110,7 +110,7 @@ def main(argv):
             f"Output file {output_filename} already exists. Use --overwrite to replace it."
         )
     if args.compressed:
-        doc.ez_save(output_filename)
+        doc.save(output_filename, deflate=True, garbage=2, use_objstms=True)
     else:
         doc.save(output_filename)
     doc.close()

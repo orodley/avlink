@@ -4,6 +4,7 @@ import argparse
 import pprint
 import re
 import sys
+import traceback
 from collections import defaultdict
 from pathlib import Path
 from pprint import pprint as pp
@@ -76,7 +77,7 @@ def main(argv):
 
     if args.print_link_targets:
         print(link_targets)
-        sys.exit(0)
+        return
 
     links_added = 0
     if not args.maps_only:
@@ -630,8 +631,13 @@ def vprint(*args, **kwargs):
 
 def exit(message):
     print(message, file=sys.stderr)
+    print("Press enter to exit")
+    input()
     sys.exit(1)
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    try:
+        main(sys.argv)
+    except Exception as e:
+        exit("".join(traceback.format_exception(e)))

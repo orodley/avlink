@@ -31,5 +31,6 @@ pip install -r requirements.txt
 ```
 
 If you're not, and you're running Windows, you can download an executable from
-the [Releases](releases) section of this repository. Once obtained you can drag
-your PDF onto the `avlink.exe` executable, and it will create the linked PDF.
+the [Releases](https://github.com/orodley/avlink/releases) section of this
+repository. Once obtained you can drag your PDF onto the `avlink.exe`
+executable, and it will create the linked PDF.

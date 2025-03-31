@@ -135,6 +135,7 @@ def get_link_targets(doc, link_entities):
             # The ToC entries sometimes have the ':' still on the end.
             title.removesuffix(":")
             title = title.lower()
+            title = re.sub(r" \(aka .*\)$", "", title)
 
             forms = [title]
             if title.endswith(", The"):

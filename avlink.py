@@ -209,6 +209,11 @@ def get_link_targets(doc, link_entities):
         "sl8-14": 781,
         "sl9-28": 792,
         "sl9-76": 804,
+        "was stick": link_targets["was sticks of set"],
+        "was sticks": link_targets["was sticks of set"],
+        "acolyte’s was stick": link_targets["was sticks of set"],
+        "deacon’s was stick": link_targets["was sticks of set"],
+        "pontifex’s was stick": link_targets["was sticks of set"],
     }
 
     # Scan through the link targets to find missing areas. We infer that if

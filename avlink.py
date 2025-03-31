@@ -548,7 +548,13 @@ def add_maps_links(doc, maps_doc, link_targets):
                 add_link(page, full_name, rect, target)
 
 
-def add_link(page, short_name, rect, target_page):
+
+
+STYLE_UNDERLINE = 1
+STYLE_BOX = 2
+
+
+def add_link(page, short_name, rect, target_page, style=STYLE_UNDERLINE):
     link = {
         "kind": fitz.LINK_GOTO,
         "from": rect,
@@ -556,12 +562,21 @@ def add_link(page, short_name, rect, target_page):
     }
     page.insert_link(link)
 
-    # Add an underline to indicate the presence of the link.
-
     # Unlike the PDF coordinate system, MuPDF has y=0 at the top of the page,
     # increasing towards the bottom.
-    underline_rect = fitz.Rect(rect.x0, rect.y1 - 2.5, rect.x1, rect.y1 - 2.0)
-    page.draw_rect(underline_rect, color=(0, 0, 0.8), width=0.5, fill=(0, 0, 0.8, 1.0))
+
+    if style == STYLE_UNDERLINE:
+        # Add an underline to indicate the presence of the link.
+        underline_rect = fitz.Rect(rect.x0, rect.y1 - 2.5, rect.x1, rect.y1 - 2.0)
+        page.draw_rect(
+            underline_rect, color=(0, 0, 0.8), width=0.5, fill=(0, 0, 0.8, 1.0)
+        )
+    elif style == STYLE_BOX:
+        page.draw_rect(
+            rect, color=(0, 0.8, 0.8), width=0.5, fill=(0, 0, 0.8), fill_opacity=0.5
+        )
+    else:
+        raise ValueError(f"Unknown link style {style}")
 
     vprint(
         f"Added link at page {page.number + 1} {rect} -> {target_page + 1} for '{short_name}'"

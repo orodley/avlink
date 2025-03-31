@@ -172,43 +172,43 @@ def get_link_targets(doc, link_entities):
     # TODO: Maybe we could add them to the table of contents also?
     link_targets |= {
         # "AV-3 & AV-4", we only match to "AV-3".
-        "AV-4": link_targets["AV-3"],
+        "av-4": link_targets["av-3"],
         "2-13": 126,
-        "2-36A": link_targets["2-36"],
-        "2-36B": link_targets["2-36"],
-        "2-36C": link_targets["2-36"],
-        "2-36D": link_targets["2-36"],
-        "2-36E": link_targets["2-36"],
-        "3-36": link_targets["3-36A"],
-        "3-52A": link_targets["3-53"],
+        "2-36a": link_targets["2-36"],
+        "2-36b": link_targets["2-36"],
+        "2-36c": link_targets["2-36"],
+        "2-36d": link_targets["2-36"],
+        "2-36e": link_targets["2-36"],
+        "3-36": link_targets["3-36a"],
+        "3-52a": link_targets["3-53"],
         # "3-101 through 3-103", we only match to "3-101".
         "3-102": link_targets["3-101"],
         "3-103": link_targets["3-101"],
         "3-146": 210,
         "3-147": 210,
         "3-172": 220,
-        "4-8": link_targets["4-8A"],
+        "4-8": link_targets["4-8a"],
         "4-99": 285,
-        "4-112": link_targets["4-112A"],
+        "4-112": link_targets["4-112a"],
         "4-120": 290,
-        "4-138": link_targets["4-138A"],
-        "4-139": link_targets["4-139A"],
+        "4-138": link_targets["4-138a"],
+        "4-139": link_targets["4-139a"],
         "5-75": 348,
-        "6-6": link_targets["6-6A"],
+        "6-6": link_targets["6-6a"],
         "6-20": 393,
         "6-68": 415,
         "6-99": 425,
         "7-40": 468,
-        "7-76": link_targets["7-76A"],
+        "7-76": link_targets["7-76a"],
         "8-69": 539,
         "9-10": 584,
         "9-33": 591,
-        "SL1-6": 658,
-        "SL6-46": 745,
-        "SL7-22": 771,
-        "SL8-14": 781,
-        "SL9-28": 792,
-        "SL9-76": 804,
+        "sl1-6": 658,
+        "sl6-46": 745,
+        "sl7-22": 771,
+        "sl8-14": 781,
+        "sl9-28": 792,
+        "sl9-76": 804,
     }
 
     # Scan through the link targets to find missing areas. We infer that if
@@ -286,6 +286,7 @@ def find_references(page, link_targets, link_entities):
     links = []
     for i in range(len(words)):
         word, rects = words[i]
+        word = word.lower()
 
         if len(rects) == 1 and (r := die_range(word)):
             die_ranges.append((*r, centre(*rects[0])))
@@ -590,7 +591,7 @@ def extract_short_name(title):
     )
 
     if match:
-        return match.group(1)
+        return match.group(1).lower()
 
     # TODO:  Extract other stuff:
     #   * NPCs

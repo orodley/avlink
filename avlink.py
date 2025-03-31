@@ -483,71 +483,97 @@ def join_rects(rects):
     return output
 
 
+MAP_PAGE_OFFSETS: dict[str, tuple[float, float]] = {
+    "AV": (0.0, 10.0),
+    "3": (19.0, 0.0),
+    "4": (5.0, 62.0),
+    "SL1": (0.0, 19.0),
+    "SL2": (35.0, 57.0),
+    "SL4": (110.0, 0.0),
+    "SL5": (60.0, 60.0),
+    "SL6": (22.0, 43.0),
+    "SL7": (37.0, 112.0),
+    "SL8": (75.0, 70.0),
+    "SL9": (55.0, 95.0),
+    "SL10A": (95.0, 58.0),
+    "SL10B": (185.0, 0.0),
+    "SL11": (20.0, 93.0),
+    "SL12": (36.0, 58.0),
+    "SL13": (30.0, 108.0),
+    "SL14": (32.0, 166.0),
+}
+
+
 def add_maps_links(doc, maps_doc, link_targets):
     toc = maps_doc.get_toc()
     if not toc:
         return
 
-    ocr_data = defaultdict(list)
-    for line in open("ocr.csv", "r").readlines():
-        s = line.strip().split(",")
-        page_no, text, x0, y0, x1, y1 = s
-        ocr_data[int(page_no)].append((text, fitz.Rect(x0, y0, x1, y1)))
+    map_links = parse_map_links(Path(__file__).with_name("map_links.txt"))
 
-    to_link = {}
-    for (_, title, page_num, *_) in toc:
-        title = title.strip().replace("\r", "")
-        if m := re.match(r"Level (\d+)", title):
-            area_prefix = m.group(1)
-        elif m := re.match(r"Sub-Level (\d+[A-Z]?)", title):
-            area_prefix = f"SL{m.group(1)}"
-        elif ap := {
-            "The Cliff Face": "EX",
-            "AV - City Ruins": "AV",
-            "Under the pyramid of Thoth": "UP",
-            "The Tower of Scrutiny": "TS",
-        }.get(title):
-            area_prefix = ap
-        else:
-            continue
-
-        # ToC uses a 1-based index, we want 0-based.
-        to_link[page_num - 1] = area_prefix
-
-    src_page_nos = []
-    for page in maps_doc.pages():
-        area_prefix = to_link.get(page.number)
-        if not area_prefix:
-            continue
-
+    src_page_nos = sorted(map_links.keys())
+    for pno in src_page_nos:
         # TODO: Should add to the ToC as well.
-        doc.insert_pdf(maps_doc, from_page=page.number, to_page=page.number)
-        src_page_nos.append(page.number)
+        doc.insert_pdf(maps_doc, from_page=pno, to_page=pno)
 
     for i, page in enumerate(doc.pages(-len(src_page_nos))):
         src_page_no = src_page_nos[i]
-        area_prefix = to_link.get(src_page_no)
 
-        info = page.get_image_info()[0]
-        pp((info["width"], info["height"]))
-        pp(page.rect)
-        scale_x = page.rect.width / info["width"]
-        scale_y = page.rect.height / info["height"]
-        pp((scale_x, scale_y))
-        for word, rect in ocr_data[src_page_no]:
-            if "-" in word:
-                full_name = word
-            else:
-                full_name = f"{area_prefix}-{word}"
+        # Find the largest drawn image on the page (the map).
+        infos = page.get_image_info()
+        if not infos:
+            continue
 
-            rect.x0 *= scale_x
-            rect.x1 *= scale_x
-            rect.y0 *= scale_y
-            rect.y1 *= scale_y
-            if target := link_targets.get(full_name):
-                add_link(page, full_name, rect, target)
+        img_info = max(infos, key=lambda inf: fitz.Rect(inf["bbox"]).get_area())
+        bbox = fitz.Rect(img_info["bbox"])
+        iw, ih = img_info["width"], img_info["height"]
 
+        # Derive page offset from the first entry's area prefix.
+        entries = map_links[src_page_no]
+        page_area_prefix = entries[0][0]
+        page_dx, page_dy = MAP_PAGE_OFFSETS.get(page_area_prefix, (0.0, 0.0))
 
+        # SL6 is split over two pages, so we need a special case for the second
+        # page. We could index MAP_PAGE_OFFSETS by page number instead, but
+        # that's harder to understand as the mapping to area key is not obvious.
+        if src_page_no == 28:
+            page_dx, page_dy = (15.0, 0.0)
+
+        for area_prefix_line, label, link_rect in entries:
+            full_name = label if "-" in label else f"{area_prefix_line}-{label}"
+
+            target = link_targets.get(full_name.lower())
+            if target is None:
+                continue
+
+            # The coordinates given in map_links.txt were taken from images
+            # with twice the resolution of ours, so we need to scale up by 2 in
+            # order for the coordinates to line up before normalising.
+            ref_w = iw * 2.0
+            ref_h = ih * 2.0
+
+            # Normalize in image space
+            nx0 = link_rect.x0 / ref_w
+            ny0 = link_rect.y0 / ref_h
+            nx1 = link_rect.x1 / ref_w
+            ny1 = link_rect.y1 / ref_h
+
+            # Map into page-space via image bbox.
+            rect = fitz.Rect(
+                bbox.x0 + nx0 * bbox.width,
+                bbox.y0 + ny0 * bbox.height,
+                bbox.x0 + nx1 * bbox.width,
+                bbox.y0 + ny1 * bbox.height,
+            )
+
+            # Apply per-page page-space offset.
+            if page_dx or page_dy:
+                rect.x0 += page_dx
+                rect.x1 += page_dx
+                rect.y0 += page_dy
+                rect.y1 += page_dy
+
+            add_link(page, full_name, rect, target, style=STYLE_BOX)
 
 
 STYLE_UNDERLINE = 1
@@ -573,7 +599,7 @@ def add_link(page, short_name, rect, target_page, style=STYLE_UNDERLINE):
         )
     elif style == STYLE_BOX:
         page.draw_rect(
-            rect, color=(0, 0.8, 0.8), width=0.5, fill=(0, 0, 0.8), fill_opacity=0.5
+            rect, color=(0, 0.8, 0.8), width=0.5, fill=(0, 0, 0.8), fill_opacity=0.2
         )
     else:
         raise ValueError(f"Unknown link style {style}")
@@ -643,6 +669,73 @@ def exit(message):
     print("Press enter to exit")
     input()
     sys.exit(1)
+
+
+def parse_map_links(file_path: Path):
+    """
+    Parse map_links.txt into:
+      { src_page_no: [(area_prefix, label, rect), ...] }
+    rect is a fitz.Rect in image coordinate space (x0,y0,x1,y1) before scaling.
+
+    Each line has the following format:
+      <map number> <area prefix> <label> (<x>,<y>) <w>x<h>
+    For example:
+      04 AK 1 (4684,3459) 58x94
+    """
+
+    entries = defaultdict(list)
+    if not file_path.exists():
+        vprint(f"map links file not found: {file_path}")
+        return entries
+
+    with file_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            parts = line.strip().split()
+            map_no = int(parts[0])
+            area_prefix, label, xy, wh = parts[1:5]
+            x, y = map(int, xy[1:-1].split(","))
+            w, h = map(int, wh.split("x"))
+
+            # This accounts for the 2-page offset between the map numbers given
+            # in map_links.txt and the corresponding PDF page numbers.
+            src_page_no = map_no + 2
+            rect = fitz.Rect(x, y, x + w, y + h)
+            entries[src_page_no].append((area_prefix, label, rect))
+
+    # For whatever reason, map_links.txt has a common pattern of having a
+    # smaller rectangle within the correct one, with the same label. Removing
+    # them manually is a pain, so we filter them out here.
+    removed_total = 0
+    for page_no, items in list(entries.items()):
+        grouped = defaultdict(list)
+        for area_prefix, label, rect in items:
+            grouped[(area_prefix, label)].append(rect)
+        to_remove = set()
+        for (area_prefix, label), rects in grouped.items():
+            if len(rects) < 2:
+                continue
+
+            # O(n^2) but n is small.
+            for i in range(len(rects)):
+                ri = rects[i]
+                for j in range(i + 1, len(rects)):
+                    rj = rects[j]
+                    if ri.intersects(rj):
+                        to_remove.add(
+                            (
+                                area_prefix,
+                                label,
+                                ri if ri.get_area() < rj.get_area() else rj,
+                            )
+                        )
+        if to_remove:
+            entries[page_no] = [t for t in items if t not in to_remove]
+            removed_total += len(to_remove)
+            vprint(f"Page {page_no}: removed {len(to_remove)} overlapping rectangles")
+    if removed_total:
+        vprint(f"Data fixup: removed {removed_total} contained rectangles in total")
+
+    return entries
 
 
 if __name__ == "__main__":

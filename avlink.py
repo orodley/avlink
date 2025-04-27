@@ -42,7 +42,7 @@ def main(argv):
     )
     parser.add_argument(
         "--no-entities",
-        help="By default, links are generated for areas and also for various"
+        help="By default, links are generated for areas and also for various "
         + "entities such as monsters, items, etc. If this flag is passed, "
         + "links are only added for areas.",
         dest="link_entities",

@@ -16,10 +16,11 @@ def main(argv):
     parser = argparse.ArgumentParser(
         description="Add links to a PDF of 'Halls of Arden Vul'"
     )
-    parser.add_argument("input_filename", help="The input PDF filename. Required.")
     parser.add_argument(
-        "--maps_filename",
-        help=argparse.SUPPRESS,
+        "pdfs",
+        nargs="+",
+        help="The input PDF filename, and optionally also the maps PDF filename. "
+        + " If both are passed, they can be given in either order",
     )
     parser.add_argument(
         "-v", "--verbose", help="Print detailed information", action="store_true"
@@ -56,15 +57,31 @@ def main(argv):
     )
 
     args = parser.parse_args(argv[1:])
-    output_filename = args.input_filename.replace(".pdf", "_linked.pdf")
+    if not (1 <= len(args.pdfs) <= 2):
+        exit("Provide one (main) or two (main + maps) PDF filenames.")
+
+    maps_doc = None
+    if len(args.pdfs) == 1:
+        main_filename = args.pdfs[0]
+        doc = fitz.open(main_filename)
+    else:
+        [a, b] = [(filename, fitz.open(filename)) for filename in args.pdfs]
+
+        # Simple heuristic -- the shorter PDF is the maps book.
+        if a[1].page_count >= b[1].page_count:
+            main_filename, doc = a
+            maps_filename, maps_doc = b
+        else:
+            main_filename, doc = b
+            maps_filename, maps_doc = a
+
+    output_filename = main_filename.replace(".pdf", "_linked.pdf")
     global VERBOSE
     VERBOSE = args.verbose
 
-    doc = fitz.open(args.input_filename)
-
     link_targets = get_link_targets(doc, args.link_entities)
     if not link_targets:
-        exit(f"No table of contents found in {args.input_filename}")
+        exit(f"No table of contents found in {main_filename}")
 
     vprint(f"{len(link_targets)} link targets found")
 
@@ -92,9 +109,9 @@ def main(argv):
         print(f"Added {links_added} links")
         vprint(f"Excluded {DIE_RANGES_EXCLUDED} die ranges")
 
-    if args.maps_filename:
-        vprint(f"Loading maps from {args.maps_filename}")
-        maps_doc = fitz.open(args.maps_filename)
+    # Use maps_doc if provided.
+    if maps_doc:
+        vprint(f"Adding maps from {maps_filename}")
         add_maps_links(doc, maps_doc, link_targets)
 
     print(f"Saving to '{output_filename}'. This may take a few minutes.")
@@ -103,6 +120,8 @@ def main(argv):
             f"Output file {output_filename} already exists. Use --overwrite to replace it."
         )
     doc.save(output_filename, deflate=True, garbage=2, use_objstms=True)
+    if maps_doc:
+        maps_doc.close()
     doc.close()
 
 

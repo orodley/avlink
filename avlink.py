@@ -505,16 +505,34 @@ MAP_PAGE_OFFSETS: dict[str, tuple[float, float]] = {
 
 
 def add_maps_links(doc, maps_doc, link_targets):
-    toc = maps_doc.get_toc()
-    if not toc:
+    doc_toc = doc.get_toc()
+    if any(l == 1 and t == "Maps" for (l, t, _) in doc_toc):
+        # Maps have already been added to the PDF, don't duplicate them.
         return
 
     map_links = parse_map_links(Path(__file__).with_name("map_links.txt"))
-
     src_page_nos = sorted(map_links.keys())
+
+    orig_page_count = doc.page_count
     for pno in src_page_nos:
-        # TODO: Should add to the ToC as well.
         doc.insert_pdf(maps_doc, from_page=pno, to_page=pno)
+
+    toc = maps_doc.get_toc()
+
+    # Build ToC entries for appended map pages.
+    appended_map_toc = []
+    src_page_to_index = {p: i for i, p in enumerate(src_page_nos)}
+    for level, title, map_page, *_ in toc:
+        map_page -= 1  # to 0-based
+        if map_page in src_page_to_index:
+            new_page = orig_page_count + src_page_to_index[map_page]
+            appended_map_toc.append([level, title, new_page + 1])
+
+    if appended_map_toc:
+        first_page = min(e[2] for e in appended_map_toc)
+        doc_toc.append([1, "Maps", first_page])
+        doc_toc.extend([[2, title, page] for _, title, page in appended_map_toc])
+        doc.set_toc(doc_toc)
 
     for i, page in enumerate(doc.pages(-len(src_page_nos))):
         src_page_no = src_page_nos[i]

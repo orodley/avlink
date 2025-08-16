@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import ctypes
+import os
 import pprint
 import re
 import sys
@@ -709,9 +711,21 @@ def vprint(*args, **kwargs):
 
 def exit(message):
     print(message, file=sys.stderr)
-    print("Press enter to exit")
-    input()
+
+    if launched_from_explorer_on_windows():
+        print("Press enter to exit")
+        input()
     sys.exit(1)
+
+
+def launched_from_explorer_on_windows():
+    if os.name != "nt":
+        return False
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    processes = (ctypes.c_uint * 1)()
+    count = kernel32.GetConsoleProcessList(processes, 1)
+    return count == 2
 
 
 def parse_map_links(file_path: Path):

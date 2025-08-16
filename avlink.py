@@ -112,7 +112,7 @@ def main(argv):
     # Use maps_doc if provided.
     if maps_doc:
         vprint(f"Adding maps from {maps_filename}")
-        add_maps_links(doc, maps_doc, link_targets)
+        add_maps_links(doc, maps_doc, resource_path("map_links.txt"), link_targets)
 
     print(f"Saving to '{output_filename}'. This may take a few minutes.")
     if not args.overwrite and Path(output_filename).exists():
@@ -123,6 +123,11 @@ def main(argv):
     if maps_doc:
         maps_doc.close()
     doc.close()
+
+
+def resource_path(filename):
+    base = getattr(sys, "_MEIPASS", Path(filename).parent)
+    return Path(base, filename)
 
 
 def get_link_targets(doc, link_entities):
@@ -523,13 +528,13 @@ MAP_PAGE_OFFSETS: dict[str, tuple[float, float]] = {
 }
 
 
-def add_maps_links(doc, maps_doc, link_targets):
+def add_maps_links(doc, maps_doc, map_links_filename, link_targets):
     doc_toc = doc.get_toc()
     if any(l == 1 and t == "Maps" for (l, t, _) in doc_toc):
         # Maps have already been added to the PDF, don't duplicate them.
         return
 
-    map_links = parse_map_links(Path(__file__).with_name("map_links.txt"))
+    map_links = parse_map_links(map_links_filename)
     src_page_nos = sorted(map_links.keys())
 
     orig_page_count = doc.page_count

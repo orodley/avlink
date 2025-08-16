@@ -572,7 +572,6 @@ def add_maps_links(doc, maps_doc, map_links_filename, link_targets):
     # 2 for the black maps, as desired.
     sample_w = max(image_info[2] for image_info in maps_doc.get_page_images(3))
     ref_scale = 6000 / sample_w
-    print(ref_scale)
 
     for i, page in enumerate(doc.pages(-len(src_page_nos))):
         src_page_no = src_page_nos[i]

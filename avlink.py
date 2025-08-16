@@ -14,7 +14,8 @@ import fitz
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="Add links to a PDF of 'Halls of Arden Vul'"
+        description="Add links to a PDF of 'Halls of Arden Vul'",
+        exit_on_error=False,
     )
     parser.add_argument(
         "pdfs",
@@ -783,5 +784,7 @@ def parse_map_links(file_path: Path):
 if __name__ == "__main__":
     try:
         main(sys.argv)
+    except argparse.ArgumentError as e:
+        exit(str(e))
     except Exception as e:
         exit("".join(traceback.format_exception(e)))

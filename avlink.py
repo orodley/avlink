@@ -597,6 +597,12 @@ def add_maps_links(doc, maps_doc, map_links_filename, link_targets):
         if src_page_no == 28:
             page_dx, page_dy = (15.0, 0.0)
 
+        # Another special case hack hooray. For some reason the level 4 map is
+        # offset a different amount between the black and blue maps. Whatever,
+        # just work around it.
+        if page_area_prefix == "4" and ref_scale == 1.0:
+            page_dx, page_dy = (0.0, 62.0)
+
         for area_prefix_line, label, link_rect in entries:
             full_name = label if "-" in label else f"{area_prefix_line}-{label}"
 

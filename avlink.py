@@ -802,3 +802,7 @@ if __name__ == "__main__":
         exit(str(e))
     except Exception as e:
         exit("".join(traceback.format_exception(e)))
+
+    if launched_from_explorer_on_windows():
+        print("Press enter to exit")
+        input()

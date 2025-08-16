@@ -561,6 +561,19 @@ def add_maps_links(doc, maps_doc, map_links_filename, link_targets):
         doc_toc.extend([[2, title, page] for _, title, page in appended_map_toc])
         doc.set_toc(doc_toc)
 
+    # The coordinates given in map_links.txt were taken from the full scale
+    # images, which are the size used in the blue maps PDF. But for some reason
+    # the black maps has images with half the resolution, so we need to scale up
+    # by 2 in order for the coordinates to line up before normalising.
+    #
+    # To determine which of the two the user supplied, we compare against a known
+    # reference image size. It'll be 6000 wide for the blue maps, and 3000 wide
+    # for the black maps. This gives us a scale factor of 1 for the blue maps and
+    # 2 for the black maps, as desired.
+    sample_w = max(image_info[2] for image_info in maps_doc.get_page_images(3))
+    ref_scale = 6000 / sample_w
+    print(ref_scale)
+
     for i, page in enumerate(doc.pages(-len(src_page_nos))):
         src_page_no = src_page_nos[i]
 
@@ -591,11 +604,8 @@ def add_maps_links(doc, maps_doc, map_links_filename, link_targets):
             if target is None:
                 continue
 
-            # The coordinates given in map_links.txt were taken from images
-            # with twice the resolution of ours, so we need to scale up by 2 in
-            # order for the coordinates to line up before normalising.
-            ref_w = iw * 2.0
-            ref_h = ih * 2.0
+            ref_w = iw * ref_scale
+            ref_h = ih * ref_scale
 
             # Normalize in image space
             nx0 = link_rect.x0 / ref_w

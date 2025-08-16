@@ -117,7 +117,7 @@ def main(argv):
         vprint(f"Adding maps from {maps_filename}")
         add_maps_links(doc, maps_doc, resource_path("map_links.txt"), link_targets)
 
-    print(f"Saving to '{output_filename}'. This may take a few minutes.")
+    print(f"Saving to '{output_filename}'")
     if not args.overwrite and Path(output_filename).exists():
         exit(
             f"Output file {output_filename} already exists. Use --overwrite to replace it."

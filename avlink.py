@@ -241,6 +241,14 @@ def get_link_targets(doc, link_entities):
         "acolyte’s was stick": link_targets["was sticks of set"],
         "deacon’s was stick": link_targets["was sticks of set"],
         "pontifex’s was stick": link_targets["was sticks of set"],
+        "varumani": link_targets["varumani, bestial"],
+        "varuda": link_targets["varuda, primitive"],
+        "keqemander": link_targets["demon, keqemander"],
+        "keqemandri": link_targets["demon, keqemander"],
+        # TODO: We could perhaps generalise this. When generating plural forms
+        # we could look for "X of Y" and generate "plural(X) of Y" as an extra
+        # name.
+        "tears of kauket": link_targets["tear of kauket"],
     }
 
     # Scan through the link targets to find missing areas. We infer that if

@@ -160,7 +160,7 @@ def get_link_targets(doc, link_entities):
 
         if link_entities and curr_section and level == curr_section_level + 1:
             # The ToC entries sometimes have the ':' still on the end.
-            title.removesuffix(":")
+            title = title.removesuffix(":")
             title = title.lower()
             title = re.sub(r" \(aka .*\)$", "", title)
 

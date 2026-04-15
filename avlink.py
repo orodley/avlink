@@ -206,6 +206,7 @@ def get_link_targets(doc, link_entities):
         "2-36c": link_targets["2-36"],
         "2-36d": link_targets["2-36"],
         "2-36e": link_targets["2-36"],
+        "3-22a": link_targets["3-23"],
         "3-36": link_targets["3-36a"],
         "3-52a": link_targets["3-53"],
         # "3-101 through 3-103", we only match to "3-101".

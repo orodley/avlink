@@ -445,7 +445,7 @@ def find_table_entries(die_ranges):
 
 
 def non_ref_pattern(before, after):
-    prefixes = {"on", "level", "levels", "dmg", "damage"}
+    prefixes = {"on", "level", "levels", "dmg", "damage", "encountered"}
     suffixes = {
         "levels",
         "dmg",
@@ -461,6 +461,7 @@ def non_ref_pattern(before, after):
         "health",
         "cp",
         "sp",
+        "ep",
         "gp",
         "pp",
         "silver",

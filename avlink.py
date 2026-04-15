@@ -250,6 +250,7 @@ def get_link_targets(doc, link_entities):
         # we could look for "X of Y" and generate "plural(X) of Y" as an extra
         # name.
         "tears of kauket": link_targets["tear of kauket"],
+        "spear of arden": link_targets["the ebon spear"],
     }
 
     # Scan through the link targets to find missing areas. We infer that if

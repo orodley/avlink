@@ -88,6 +88,10 @@ def main(argv):
 
     vprint(f"{len(link_targets)} link targets found")
 
+    global AREA_INDEX
+    AREA_INDEX = load_area_index(resource_path("area_index.txt"))
+    vprint(f"{len(AREA_INDEX)} ambiguous-reference index entries loaded")
+
     if args.print_link_targets:
         print(link_targets)
         return
@@ -131,6 +135,27 @@ def main(argv):
 def resource_path(filename):
     base = getattr(sys, "_MEIPASS", Path(filename).parent)
     return Path(base, filename)
+
+
+# Disambiguation decisions for ambiguous area references (e.g. "4-16", which
+# could be area 4-16 or a number range), keyed by (page, ordinal, token).
+# Built offline by build_index.py; see that file for how and why. Empty if the
+# index is absent, in which case avlink falls back to the rule heuristics alone.
+AREA_INDEX = {}
+
+
+def load_area_index(path):
+    index = {}
+    if not Path(path).exists():
+        return index
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            page, ordinal, token, decision = line.split()
+            index[(int(page), int(ordinal), token.lower())] = decision
+    return index
 
 
 def get_link_targets(doc, link_entities):
@@ -326,9 +351,14 @@ def find_references(page, link_targets, link_entities):
 
     die_ranges = []
     links = []
+    counts = {}
     for i in range(len(words)):
         word, rects = words[i]
         word = word.lower()
+        # Ordinal of this token among same-token words on the page. Matches the
+        # key build_index.py wrote, so we can look up its decision.
+        ordinal = counts.get(word, 0)
+        counts[word] = ordinal + 1
 
         if len(rects) == 1 and (r := die_range(word)):
             die_ranges.append((*r, centre(*rects[0])))
@@ -338,10 +368,22 @@ def find_references(page, link_targets, link_entities):
                 words[i - 1][0] if i > 0 else None,
                 words[i + 1][0] if i < len(words) - 1 else None,
             )
-            if non_ref_pattern(before, after):
+
+            # For ambiguous tokens, the prebuilt index is authoritative: it
+            # already folds in the rule heuristics plus an LLM second opinion.
+            # A "ref" decision is forced through, overriding both the word
+            # blocklist and the roll-table filter below.
+            forced = False
+            if die_range(word):
+                decision = AREA_INDEX.get((page.number + 1, ordinal, word))
+                if decision == "range":
+                    continue
+                forced = decision == "ref"
+
+            if not forced and non_ref_pattern(before, after):
                 continue
             for rect in rects:
-                links.append((word, fitz.Rect(*rect), target_page))
+                links.append((word, fitz.Rect(*rect), target_page, forced))
 
     if link_entities:
         longest = max(len(name.split()) for name in link_targets.keys())
@@ -353,7 +395,7 @@ def find_references(page, link_targets, link_entities):
                     for _, rects in words[i:j]:
                         all_rects.extend(fitz.Rect(*r) for r in rects)
                     for rect in join_rects(all_rects):
-                        links.append((phrase, rect, target_page))
+                        links.append((phrase, rect, target_page, False))
                     # We started from the longest possible match, so as soon as we
                     # get one we stop so that we don't have overlapping links.
                     break
@@ -364,8 +406,10 @@ def find_references(page, link_targets, link_entities):
     excluded_points = find_table_entries(die_ranges)
 
     output = []
-    for word, rect, target_page in links:
-        if any(rect.contains(excluded_point) for excluded_point in excluded_points):
+    for word, rect, target_page, forced in links:
+        if not forced and any(
+            rect.contains(excluded_point) for excluded_point in excluded_points
+        ):
             global DIE_RANGES_EXCLUDED
             DIE_RANGES_EXCLUDED += 1
         else:

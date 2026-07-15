@@ -136,11 +136,25 @@ def resource_path(filename):
     return Path(base, filename)
 
 
-# Disambiguation decisions for ambiguous area references (e.g. "4-16", which
-# could be area 4-16 or a number range), keyed by (page, ordinal, token).
-# Built offline by build_index.py; see that file for how and why. Empty if the
-# index is absent, in which case avlink falls back to the rule heuristics alone.
 def load_area_index(path):
+    """Load the disambiguation decisions for ambiguous area references.
+
+    A token like "4-16" can be a reference to area 4-16 or a number range (a
+    die roll, damage, a quantity). area_index.txt records a "ref"/"range"
+    decision per ambiguous occurrence, keyed by (page, ordinal, token), where
+    ordinal counts occurrences of that same token on that page, in reading
+    order, from 0.
+
+    The decisions were settled offline by consensus between the same heuristics
+    find_references applies and a local LLM, requiring both to read an
+    occurrence as a reference before linking it. Freezing them into a file
+    keeps link time free of any LLM dependency and makes each decision a
+    one-line hand edit: if a link is wrong, flip "ref"/"range" on its line and
+    re-run avlink.
+
+    Returns an empty index if the file is absent, in which case find_references
+    falls back to its heuristics alone.
+    """
     index = {}
     if not Path(path).exists():
         return index
@@ -351,8 +365,8 @@ def find_references(page, link_targets, link_entities, area_index):
     for i in range(len(words)):
         word, rects = words[i]
         word = word.lower()
-        # Ordinal of this token among same-token words on the page. Matches the
-        # key build_index.py wrote, so we can look up its decision.
+        # Ordinal of this token among same-token words on the page, part of the
+        # area_index key. See load_area_index.
         ordinal = counts.get(word, 0)
         counts[word] = ordinal + 1
 

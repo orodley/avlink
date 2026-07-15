@@ -88,9 +88,8 @@ def main(argv):
 
     vprint(f"{len(link_targets)} link targets found")
 
-    global AREA_INDEX
-    AREA_INDEX = load_area_index(resource_path("area_index.txt"))
-    vprint(f"{len(AREA_INDEX)} ambiguous-reference index entries loaded")
+    area_index = load_area_index(resource_path("area_index.txt"))
+    vprint(f"{len(area_index)} ambiguous-reference index entries loaded")
 
     if args.print_link_targets:
         print(link_targets)
@@ -107,7 +106,7 @@ def main(argv):
             if not args.verbose:
                 print(f"\rAdding links to page {page.number + 1}", end="")
             for word, rect, target_page in find_references(
-                page, link_targets, args.link_entities
+                page, link_targets, args.link_entities, area_index
             ):
                 add_link(page, word, rect, target_page)
                 links_added += 1
@@ -141,9 +140,6 @@ def resource_path(filename):
 # could be area 4-16 or a number range), keyed by (page, ordinal, token).
 # Built offline by build_index.py; see that file for how and why. Empty if the
 # index is absent, in which case avlink falls back to the rule heuristics alone.
-AREA_INDEX = {}
-
-
 def load_area_index(path):
     index = {}
     if not Path(path).exists():
@@ -322,7 +318,7 @@ def get_link_targets(doc, link_entities):
 DIE_RANGES_EXCLUDED = 0
 
 
-def find_references(page, link_targets, link_entities):
+def find_references(page, link_targets, link_entities, area_index):
     # Delimiters are carefully chosen to only capture cases where we want to
     # add links.
     # * We omit ":", because the section headers have colons after the name
@@ -375,7 +371,7 @@ def find_references(page, link_targets, link_entities):
             # blocklist and the roll-table filter below.
             forced = False
             if die_range(word):
-                decision = AREA_INDEX.get((page.number + 1, ordinal, word))
+                decision = area_index.get((page.number + 1, ordinal, word))
                 if decision == "range":
                     continue
                 forced = decision == "ref"

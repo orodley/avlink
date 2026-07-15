@@ -88,6 +88,9 @@ def main(argv):
 
     vprint(f"{len(link_targets)} link targets found")
 
+    area_index = load_area_index(resource_path("area_index.txt"))
+    vprint(f"{len(area_index)} ambiguous-reference index entries loaded")
+
     if args.print_link_targets:
         print(link_targets)
         return
@@ -103,7 +106,7 @@ def main(argv):
             if not args.verbose:
                 print(f"\rAdding links to page {page.number + 1}", end="")
             for word, rect, target_page in find_references(
-                page, link_targets, args.link_entities
+                page, link_targets, args.link_entities, area_index
             ):
                 add_link(page, word, rect, target_page)
                 links_added += 1
@@ -131,6 +134,38 @@ def main(argv):
 def resource_path(filename):
     base = getattr(sys, "_MEIPASS", Path(filename).parent)
     return Path(base, filename)
+
+
+def load_area_index(path):
+    """Load the disambiguation decisions for ambiguous area references.
+
+    A token like "4-16" can be a reference to area 4-16 or a number range (a
+    die roll, damage, a quantity). area_index.txt records a "ref"/"range"
+    decision per ambiguous occurrence, keyed by (page, ordinal, token), where
+    ordinal counts occurrences of that same token on that page, in reading
+    order, from 0.
+
+    The decisions were settled offline by consensus between the same heuristics
+    find_references applies and a local LLM, requiring both to read an
+    occurrence as a reference before linking it. Freezing them into a file
+    keeps link time free of any LLM dependency and makes each decision a
+    one-line hand edit: if a link is wrong, flip "ref"/"range" on its line and
+    re-run avlink.
+
+    Returns an empty index if the file is absent, in which case find_references
+    falls back to its heuristics alone.
+    """
+    index = {}
+    if not Path(path).exists():
+        return index
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            page, ordinal, token, decision = line.split()
+            index[(int(page), int(ordinal), token.lower())] = decision
+    return index
 
 
 def get_link_targets(doc, link_entities):
@@ -297,7 +332,7 @@ def get_link_targets(doc, link_entities):
 DIE_RANGES_EXCLUDED = 0
 
 
-def find_references(page, link_targets, link_entities):
+def find_references(page, link_targets, link_entities, area_index):
     # Delimiters are carefully chosen to only capture cases where we want to
     # add links.
     # * We omit ":", because the section headers have colons after the name
@@ -326,9 +361,14 @@ def find_references(page, link_targets, link_entities):
 
     die_ranges = []
     links = []
+    counts = {}
     for i in range(len(words)):
         word, rects = words[i]
         word = word.lower()
+        # Ordinal of this token among same-token words on the page, part of the
+        # area_index key. See load_area_index.
+        ordinal = counts.get(word, 0)
+        counts[word] = ordinal + 1
 
         if len(rects) == 1 and (r := die_range(word)):
             die_ranges.append((*r, centre(*rects[0])))
@@ -338,10 +378,22 @@ def find_references(page, link_targets, link_entities):
                 words[i - 1][0] if i > 0 else None,
                 words[i + 1][0] if i < len(words) - 1 else None,
             )
-            if non_ref_pattern(before, after):
+
+            # For ambiguous tokens, the prebuilt index is authoritative: it
+            # already folds in the rule heuristics plus an LLM second opinion.
+            # A "ref" decision is forced through, overriding both the word
+            # blocklist and the roll-table filter below.
+            forced = False
+            if die_range(word):
+                decision = area_index.get((page.number + 1, ordinal, word))
+                if decision == "range":
+                    continue
+                forced = decision == "ref"
+
+            if not forced and non_ref_pattern(before, after):
                 continue
             for rect in rects:
-                links.append((word, fitz.Rect(*rect), target_page))
+                links.append((word, fitz.Rect(*rect), target_page, forced))
 
     if link_entities:
         longest = max(len(name.split()) for name in link_targets.keys())
@@ -353,7 +405,7 @@ def find_references(page, link_targets, link_entities):
                     for _, rects in words[i:j]:
                         all_rects.extend(fitz.Rect(*r) for r in rects)
                     for rect in join_rects(all_rects):
-                        links.append((phrase, rect, target_page))
+                        links.append((phrase, rect, target_page, False))
                     # We started from the longest possible match, so as soon as we
                     # get one we stop so that we don't have overlapping links.
                     break
@@ -364,8 +416,10 @@ def find_references(page, link_targets, link_entities):
     excluded_points = find_table_entries(die_ranges)
 
     output = []
-    for word, rect, target_page in links:
-        if any(rect.contains(excluded_point) for excluded_point in excluded_points):
+    for word, rect, target_page, forced in links:
+        if not forced and any(
+            rect.contains(excluded_point) for excluded_point in excluded_points
+        ):
             global DIE_RANGES_EXCLUDED
             DIE_RANGES_EXCLUDED += 1
         else:

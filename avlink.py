@@ -891,8 +891,10 @@ if __name__ == "__main__":
         main(sys.argv)
     except argparse.ArgumentError as e:
         exit(str(e))
-    except Exception as e:
-        exit("".join(traceback.format_exception(e)))
+    except Exception:
+        # traceback.format_exception(e) would be neater, but the one-argument
+        # form requires Python 3.10+.
+        exit(traceback.format_exc())
 
     if launched_from_explorer_on_windows():
         print("Press enter to exit")

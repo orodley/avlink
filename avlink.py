@@ -84,7 +84,12 @@ def main(argv):
 
     link_targets = get_link_targets(doc, args.link_entities)
     if not link_targets:
-        exit(f"No table of contents found in {main_filename}")
+        exit(
+            f"Couldn't find a table of contents with Arden Vul area entries in "
+            f"{main_filename}.\nNote that the main 'Halls of Arden Vul' PDF is "
+            "always required; the maps PDF can only be linked alongside it, "
+            "not on its own."
+        )
 
     vprint(f"{len(link_targets)} link targets found")
 
@@ -224,6 +229,12 @@ def get_link_targets(doc, link_entities):
                 link_targets[form] = page_num
         elif short_name := extract_short_name(title):
             link_targets[short_name] = page_num
+
+    # If we found a ToC but it has no area entries, this isn't the main Halls
+    # of Arden Vul book -- most likely the maps PDF was passed on its own.
+    # Bail out before the fixups below fail with a KeyError.
+    if "av-3" not in link_targets:
+        return None
 
     # Add areas that are missing from the table of contents.
     # Some areas with letters on the end don't contain an entry for the area

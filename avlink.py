@@ -607,6 +607,12 @@ MAP_PAGE_OFFSETS: dict[str, tuple[float, float]] = {
 }
 
 
+def rect_area(rect):
+    # This is a workaround for some PyMuPDF releases (e.g. 1.26.5) missing
+    # Rect.get_area(): https://github.com/pymupdf/PyMuPDF/issues/4742
+    return rect.width * rect.height
+
+
 def add_maps_links(doc, maps_doc, map_links_filename, link_targets):
     doc_toc = doc.get_toc()
     if any(l == 1 and t == "Maps" for (l, t, _) in doc_toc):
@@ -657,7 +663,7 @@ def add_maps_links(doc, maps_doc, map_links_filename, link_targets):
         if not infos:
             continue
 
-        img_info = max(infos, key=lambda inf: fitz.Rect(inf["bbox"]).get_area())
+        img_info = max(infos, key=lambda inf: rect_area(fitz.Rect(inf["bbox"])))
         bbox = fitz.Rect(img_info["bbox"])
         iw, ih = img_info["width"], img_info["height"]
 
@@ -873,7 +879,7 @@ def parse_map_links(file_path: Path):
                             (
                                 area_prefix,
                                 label,
-                                ri if ri.get_area() < rj.get_area() else rj,
+                                ri if rect_area(ri) < rect_area(rj) else rj,
                             )
                         )
         if to_remove:
